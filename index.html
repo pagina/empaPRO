@@ -3584,6 +3584,8 @@
       const sel = document.getElementById('pdSucursal');
       sel.innerHTML = '<option value="">— Seleccionar sucursal —</option>' +
         state.franquicias.map(f => `<option value="${esc(f.alias)}">${esc(f.alias)}</option>`).join('');
+      // Pre-seleccionar primera sucursal para que el recalc funcione de entrada
+      if (state.franquicias.length > 0) sel.value = state.franquicias[0].alias;
       sel.onchange = recalcPedidoDia;
 
       // Grid de variedades
@@ -3595,17 +3597,37 @@
       const grid = document.getElementById(gridId);
       if (!grid) return;
       const variedades = getVariedades();
-      // mantener header
+
+      if (variedades.length === 0) {
+        // ── MODO LIBRE: sin variedades configuradas ──
+        // Mostramos inputs directos de docenas y precio para no bloquear al usuario.
+        grid.innerHTML = `
+          <div class="vg-header" style="grid-column:1/-1;color:var(--yellow);border-color:var(--yellow)">
+            ⚠️ Sin variedades — ingreso libre
+          </div>
+          <div class="vg-variedad-label" style="grid-column:1/-1;font-size:11px;color:var(--muted);margin-bottom:4px">
+            Podés ingresar datos sin variedades. Para usarlas, configurá en <strong>Ajustes → Variedades</strong>.
+          </div>
+          <div class="vg-variedad-label">Docenas totales</div>
+          <input type="number" min="0" step="0.5" value="0" id="${prefix}free_doc"
+            class="vg-input"
+            oninput="${prefix === 'pd_' ? 'recalcPedidoDia()' : 'recalcEditPedido()'}"
+            style="width:80px">
+          <div></div>
+          <div class="vg-variedad-label">Precio por docena ($)</div>
+          <input type="number" min="0" step="1" value="0" id="${prefix}free_precio"
+            class="vg-input"
+            oninput="${prefix === 'pd_' ? 'recalcPedidoDia()' : 'recalcEditPedido()'}"
+            style="width:80px">
+          <div></div>`;
+        return;
+      }
+
+      // ── MODO VARIEDADES: renderizado normal ──
       grid.innerHTML = `
         <div class="vg-header">Variedad</div>
         <div class="vg-header" style="text-align:center">Docenas</div>
         <div class="vg-header" style="text-align:center">Variación</div>`;
-      if (variedades.length === 0) {
-        grid.innerHTML += `<div style="grid-column:1/-1;font-size:11px;color:var(--muted);padding:8px 0">
-          No hay variedades configuradas. Andá a <strong>Ajustes → Variedades</strong>.
-        </div>`;
-        return;
-      }
       variedades.forEach((v, i) => {
         const label = document.createElement('div');
         label.className = 'vg-variedad-label';
@@ -3632,13 +3654,22 @@
     function recalcPedidoDia() {
       const variedades = getVariedades();
       let totalDoc = 0, totalFac = 0, totalDelta = 0;
-      variedades.forEach((v, i) => {
-        const doc = parseFloat(document.getElementById(`pd_doc_${i}`)?.value || 0) || 0;
-        const delta = parseFloat(document.getElementById(`pd_delta_${i}`)?.value || 0) || 0;
-        totalDoc += doc;
-        totalFac += doc * (v.precio || 0);
-        totalDelta += delta;
-      });
+
+      if (variedades.length === 0) {
+        // Modo libre
+        totalDoc = parseFloat(document.getElementById('pd_free_doc')?.value || 0) || 0;
+        const precio = parseFloat(document.getElementById('pd_free_precio')?.value || 0) || 0;
+        totalFac = totalDoc * precio;
+      } else {
+        variedades.forEach((v, i) => {
+          const doc = parseFloat(document.getElementById(`pd_doc_${i}`)?.value || 0) || 0;
+          const delta = parseFloat(document.getElementById(`pd_delta_${i}`)?.value || 0) || 0;
+          totalDoc += doc;
+          totalFac += doc * (v.precio || 0);
+          totalDelta += delta;
+        });
+      }
+
       const alias = document.getElementById('pdSucursal')?.value || '';
       const f = state.franquicias.find(f => f.alias === alias);
       const totalReg = f ? totalFac * (f.regalia / 100) : 0;
@@ -3648,7 +3679,8 @@
       el('pdTotalFac', fmt(totalFac));
       el('pdTotalReg', fmt(totalReg));
       el('pdTotalDelta', (totalDelta >= 0 ? '+' : '') + totalDelta);
-      document.getElementById('pdTotalDelta').style.color = totalDelta > 0 ? 'var(--green)' : totalDelta < 0 ? 'var(--red)' : 'var(--muted)';
+      const deltaEl = document.getElementById('pdTotalDelta');
+      if (deltaEl) deltaEl.style.color = totalDelta > 0 ? 'var(--green)' : totalDelta < 0 ? 'var(--red)' : 'var(--muted)';
     }
 
     function guardarPedidoDia() {
@@ -3656,17 +3688,32 @@
       if (!alias) { showToast('Seleccioná una sucursal', 'error'); return; }
       if (!currentDiaStr || !currentSemanaKey) return;
       const variedades = getVariedades();
-      const items = variedades.map((v, i) => ({
-        nombre: v.nombre,
-        precio: v.precio || 0,
-        docenas: parseFloat(document.getElementById(`pd_doc_${i}`)?.value || 0) || 0,
-        delta: parseFloat(document.getElementById(`pd_delta_${i}`)?.value || 0) || 0
-      })).filter(it => it.docenas > 0 || it.delta !== 0);
 
-      if (items.length === 0) { showToast('Ingresá al menos una variedad con docenas > 0', 'error'); return; }
+      let items = [];
+      let totalDocenas = 0;
+      let subtotal = 0;
 
-      const totalDocenas = items.reduce((a,it) => a + it.docenas, 0);
-      const subtotal = items.reduce((a,it) => a + it.docenas * it.precio, 0);
+      if (variedades.length === 0) {
+        // Modo libre: leer inputs directos
+        totalDocenas = parseFloat(document.getElementById('pd_free_doc')?.value || 0) || 0;
+        const precio = parseFloat(document.getElementById('pd_free_precio')?.value || 0) || 0;
+        if (totalDocenas <= 0) { showToast('Ingresá la cantidad de docenas', 'error'); return; }
+        if (precio <= 0) { showToast('Ingresá el precio por docena', 'error'); return; }
+        subtotal = totalDocenas * precio;
+        items = [{ nombre: 'General', precio, docenas: totalDocenas, delta: 0 }];
+      } else {
+        items = variedades.map((v, i) => ({
+          nombre: v.nombre,
+          precio: v.precio || 0,
+          docenas: parseFloat(document.getElementById(`pd_doc_${i}`)?.value || 0) || 0,
+          delta: parseFloat(document.getElementById(`pd_delta_${i}`)?.value || 0) || 0
+        })).filter(it => it.docenas > 0 || it.delta !== 0);
+
+        if (items.length === 0) { showToast('Ingresá al menos una variedad con docenas > 0', 'error'); return; }
+        totalDocenas = items.reduce((a,it) => a + it.docenas, 0);
+        subtotal = items.reduce((a,it) => a + it.docenas * it.precio, 0);
+      }
+
       const f = state.franquicias.find(f => f.alias === alias);
 
       const pd = {
@@ -3810,15 +3857,23 @@
 
       renderVariedadesGrid('editVariedadesGrid', 'epd_');
 
-      // Pre-cargar valores
       const variedades = getVariedades();
-      variedades.forEach((v, i) => {
-        const existing = (pd.items||[]).find(it => it.nombre === v.nombre);
-        const docEl = document.getElementById(`epd_doc_${i}`);
-        const delEl = document.getElementById(`epd_delta_${i}`);
-        if (docEl) docEl.value = existing ? existing.docenas : 0;
-        if (delEl) delEl.value = existing ? (existing.delta||0) : 0;
-      });
+      if (variedades.length === 0) {
+        // Modo libre: pre-cargar docenas y precio del pedido existente
+        const docEl = document.getElementById('epd_free_doc');
+        const precEl = document.getElementById('epd_free_precio');
+        if (docEl) docEl.value = pd.totalDocenas || 0;
+        if (precEl) precEl.value = pd.precioDocena || 0;
+      } else {
+        // Pre-cargar valores por variedad
+        variedades.forEach((v, i) => {
+          const existing = (pd.items||[]).find(it => it.nombre === v.nombre);
+          const docEl = document.getElementById(`epd_doc_${i}`);
+          const delEl = document.getElementById(`epd_delta_${i}`);
+          if (docEl) docEl.value = existing ? existing.docenas : 0;
+          if (delEl) delEl.value = existing ? (existing.delta||0) : 0;
+        });
+      }
       recalcEditPedido();
       document.getElementById('modalEditPedidoDia').classList.add('open');
     }
@@ -3826,10 +3881,18 @@
     function recalcEditPedido() {
       const variedades = getVariedades();
       let totalDoc = 0, totalFac = 0;
-      variedades.forEach((v, i) => {
-        const doc = parseFloat(document.getElementById(`epd_doc_${i}`)?.value || 0) || 0;
-        totalDoc += doc; totalFac += doc * (v.precio || 0);
-      });
+
+      if (variedades.length === 0) {
+        totalDoc = parseFloat(document.getElementById('epd_free_doc')?.value || 0) || 0;
+        const precio = parseFloat(document.getElementById('epd_free_precio')?.value || 0) || 0;
+        totalFac = totalDoc * precio;
+      } else {
+        variedades.forEach((v, i) => {
+          const doc = parseFloat(document.getElementById(`epd_doc_${i}`)?.value || 0) || 0;
+          totalDoc += doc; totalFac += doc * (v.precio || 0);
+        });
+      }
+
       const alias = document.getElementById('editPdSucursal')?.value || '';
       const f = state.franquicias.find(f => f.alias === alias);
       const reg = f ? totalFac*(f.regalia/100) : 0;
@@ -3846,14 +3909,28 @@
       const alias = document.getElementById('editPdSucursal')?.value;
       if (!alias) { showToast('Seleccioná una sucursal', 'error'); return; }
       const variedades = getVariedades();
-      const items = variedades.map((v,i) => ({
-        nombre: v.nombre, precio: v.precio||0,
-        docenas: parseFloat(document.getElementById(`epd_doc_${i}`)?.value||0)||0,
-        delta: parseFloat(document.getElementById(`epd_delta_${i}`)?.value||0)||0
-      })).filter(it => it.docenas > 0 || it.delta !== 0);
 
-      const totalDocenas = items.reduce((a,it) => a+it.docenas, 0);
-      const subtotal = items.reduce((a,it) => a+it.docenas*it.precio, 0);
+      let items = [];
+      let totalDocenas = 0;
+      let subtotal = 0;
+
+      if (variedades.length === 0) {
+        totalDocenas = parseFloat(document.getElementById('epd_free_doc')?.value || 0) || 0;
+        const precio = parseFloat(document.getElementById('epd_free_precio')?.value || 0) || 0;
+        if (totalDocenas <= 0) { showToast('Ingresá la cantidad de docenas', 'error'); return; }
+        if (precio <= 0) { showToast('Ingresá el precio por docena', 'error'); return; }
+        subtotal = totalDocenas * precio;
+        items = [{ nombre: 'General', precio, docenas: totalDocenas, delta: 0 }];
+      } else {
+        items = variedades.map((v,i) => ({
+          nombre: v.nombre, precio: v.precio||0,
+          docenas: parseFloat(document.getElementById(`epd_doc_${i}`)?.value||0)||0,
+          delta: parseFloat(document.getElementById(`epd_delta_${i}`)?.value||0)||0
+        })).filter(it => it.docenas > 0 || it.delta !== 0);
+        if (items.length === 0) { showToast('Ingresá al menos una variedad con docenas > 0', 'error'); return; }
+        totalDocenas = items.reduce((a,it) => a+it.docenas, 0);
+        subtotal = items.reduce((a,it) => a+it.docenas*it.precio, 0);
+      }
 
       const updated = { ...pd, franquiciaAlias: alias, items, totalDocenas,
         subtotal, precioDocena: totalDocenas>0 ? subtotal/totalDocenas : 0, docenas: totalDocenas };
