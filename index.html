@@ -3477,9 +3477,16 @@
               <div class="sli-periodo">${formatDateShort(w.fechaInicio)} — ${formatDateShort(w.fechaFin)}</div>
               <div class="sli-progreso">${diasConPedido} / 6 días · ${pds.length} pedido${pds.length!==1?'s':''} · ${totalDoc.toFixed(0)} docenas</div>
             </div>
-            <div class="sli-right">
-              <div class="sli-docenas">${fmt(totalFac)}</div>
-              <div class="sli-estado" style="color:${isCerrada?'var(--green)':'var(--accent-light)'}">${isCerrada?'✅ Cerrada':'🟡 Abierta'}</div>
+            <div class="sli-right" style="display:flex;align-items:center;gap:10px">
+              <div>
+                <div class="sli-docenas">${fmt(totalFac)}</div>
+                <div class="sli-estado" style="color:${isCerrada?'var(--green)':'var(--accent-light)'}">${isCerrada?'✅ Cerrada':'🟡 Abierta'}</div>
+              </div>
+              <button onclick="event.stopPropagation();eliminarSemana('${w.semana}')"
+                title="Eliminar semana"
+                style="background:none;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--muted);padding:5px 8px;cursor:pointer;font-size:13px;transition:color .2s,border-color .2s"
+                onmouseover="this.style.color='var(--red)';this.style.borderColor='var(--red)'"
+                onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">🗑️</button>
             </div>
           </div>`;
       }).join('');
@@ -3491,6 +3498,28 @@
       document.getElementById('semanaCierreView').style.display = 'none';
       currentSemanaKey = null;
       currentDiaStr = null;
+    }
+
+    function eliminarSemana(semanaKey) {
+      const w = state.semanas.find(s => s.semana === semanaKey);
+      if (!w) return;
+      const periodo = `${formatDateShort(w.fechaInicio)} — ${formatDateShort(w.fechaFin)}`;
+      if (!confirm(`¿Eliminar la semana ${periodo} y todos sus pedidos?\nEsta acción no se puede deshacer.`)) return;
+
+      // Eliminar pedidos diarios de esa semana
+      if (state.pedidosDiarios) {
+        state.pedidosDiarios = state.pedidosDiarios.filter(p => p.semana !== semanaKey);
+      }
+      // Eliminar de state.pedidos también (compatibilidad)
+      state.pedidos = (state.pedidos || []).filter(p => p.semana !== semanaKey);
+      // Eliminar cierres de esa semana
+      state.cierres = (state.cierres || []).filter(c => c.semana !== semanaKey);
+      // Eliminar la semana
+      state.semanas = state.semanas.filter(s => s.semana !== semanaKey);
+
+      saveDataLocal();
+      renderSemanasList();
+      showToast(`Semana ${periodo} eliminada`);
     }
 
     // ── Abrir detalle de semana ──
@@ -3614,11 +3643,12 @@
             oninput="${prefix === 'pd_' ? 'recalcPedidoDia()' : 'recalcEditPedido()'}"
             style="width:80px">
           <div></div>
-          <div class="vg-variedad-label">Precio por docena ($)</div>
-          <input type="number" min="0" step="1" value="0" id="${prefix}free_precio"
+          <div class="vg-variedad-label">Precio/docena ($)</div>
+          <input type="text" inputmode="decimal" value="" placeholder="Ej: 10.000" id="${prefix}free_precio"
             class="vg-input"
-            oninput="${prefix === 'pd_' ? 'recalcPedidoDia()' : 'recalcEditPedido()'}"
-            style="width:80px">
+            oninput="formatMontoInputLive(this);${prefix === 'pd_' ? 'recalcPedidoDia()' : 'recalcEditPedido()'}"
+            onblur="formatMontoInputBlur(this)"
+            style="width:100px">
           <div></div>`;
         return;
       }
@@ -3658,7 +3688,7 @@
       if (variedades.length === 0) {
         // Modo libre
         totalDoc = parseFloat(document.getElementById('pd_free_doc')?.value || 0) || 0;
-        const precio = parseFloat(document.getElementById('pd_free_precio')?.value || 0) || 0;
+        const precio = parseMonto(document.getElementById('pd_free_precio')?.value || '0');
         totalFac = totalDoc * precio;
       } else {
         variedades.forEach((v, i) => {
@@ -3696,7 +3726,7 @@
       if (variedades.length === 0) {
         // Modo libre: leer inputs directos
         totalDocenas = parseFloat(document.getElementById('pd_free_doc')?.value || 0) || 0;
-        const precio = parseFloat(document.getElementById('pd_free_precio')?.value || 0) || 0;
+        const precio = parseMonto(document.getElementById('pd_free_precio')?.value || '0');
         if (totalDocenas <= 0) { showToast('Ingresá la cantidad de docenas', 'error'); return; }
         if (precio <= 0) { showToast('Ingresá el precio por docena', 'error'); return; }
         subtotal = totalDocenas * precio;
@@ -3863,7 +3893,7 @@
         const docEl = document.getElementById('epd_free_doc');
         const precEl = document.getElementById('epd_free_precio');
         if (docEl) docEl.value = pd.totalDocenas || 0;
-        if (precEl) precEl.value = pd.precioDocena || 0;
+        if (precEl) precEl.value = pd.precioDocena ? pd.precioDocena.toLocaleString('es-AR', { maximumFractionDigits: 2 }) : '';
       } else {
         // Pre-cargar valores por variedad
         variedades.forEach((v, i) => {
@@ -3884,7 +3914,7 @@
 
       if (variedades.length === 0) {
         totalDoc = parseFloat(document.getElementById('epd_free_doc')?.value || 0) || 0;
-        const precio = parseFloat(document.getElementById('epd_free_precio')?.value || 0) || 0;
+        const precio = parseMonto(document.getElementById('epd_free_precio')?.value || '0');
         totalFac = totalDoc * precio;
       } else {
         variedades.forEach((v, i) => {
@@ -3916,7 +3946,7 @@
 
       if (variedades.length === 0) {
         totalDocenas = parseFloat(document.getElementById('epd_free_doc')?.value || 0) || 0;
-        const precio = parseFloat(document.getElementById('epd_free_precio')?.value || 0) || 0;
+        const precio = parseMonto(document.getElementById('epd_free_precio')?.value || '0');
         if (totalDocenas <= 0) { showToast('Ingresá la cantidad de docenas', 'error'); return; }
         if (precio <= 0) { showToast('Ingresá el precio por docena', 'error'); return; }
         subtotal = totalDocenas * precio;
