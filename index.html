@@ -517,6 +517,85 @@
     .cal-week-chip.chip-domingo.chip-open { border-right-color: var(--accent); }
     .cal-week-chip.chip-domingo.chip-closed { border-right-color: var(--green); }
 
+    /* ======================== PEDIDOS DIARIOS ======================== */
+    .pedidos-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .semana-progress {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px 16px; margin-bottom: 16px;
+    }
+    .semana-progress-bar-wrap { background: var(--bg); border-radius: 20px; height: 8px; margin: 10px 0 6px; overflow:hidden; }
+    .semana-progress-bar { height: 8px; border-radius: 20px; background: var(--accent); transition: width .4s ease; }
+    .semana-progress-bar.full { background: var(--green); }
+    .dias-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 6px; margin-bottom: 16px; }
+    .dia-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 8px 6px; text-align: center; cursor: pointer; transition: border-color var(--transition), background var(--transition);
+      min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    }
+    .dia-card:hover { border-color: var(--border-hover); background: var(--surface2); }
+    .dia-card.dia-activo { border-color: var(--accent); background: rgba(99,102,241,.12); }
+    .dia-card.dia-con-pedidos { border-color: var(--green); background: rgba(16,185,129,.08); }
+    .dia-card.dia-hoy { box-shadow: 0 0 0 2px var(--accent); }
+    .dia-card-nombre { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+    .dia-card-fecha { font-size: 13px; font-weight: 800; color: var(--text); }
+    .dia-card-count { font-size: 9px; color: var(--green); font-weight: 700; }
+    .dia-card-docenas { font-size: 9px; font-family: 'Space Mono', monospace; color: var(--accent-light); }
+
+    /* Formulario pedido diario */
+    .pedido-form-wrap {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px; margin-bottom: 16px;
+    }
+    .pedido-form-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--text-secondary); margin-bottom: 14px; display:flex; align-items:center; justify-content:space-between; }
+    .variedades-grid { display: grid; grid-template-columns: 1fr auto auto; gap: 6px 10px; align-items: center; margin-bottom: 12px; }
+    .variedades-grid .vg-header { font-size: 9px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+    .vg-variedad-label { font-size: 12px; color: var(--text); font-weight: 600; }
+    .vg-input { width: 64px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 8px; color: var(--text); font-family: 'Space Mono', monospace; font-size: 12px; text-align: center; }
+    .vg-input:focus { outline: none; border-color: var(--accent); }
+    .vg-input.delta { color: var(--yellow); }
+    .vg-input.delta:focus { border-color: var(--yellow); }
+    .pedido-totales { display:flex; gap:10px; background: var(--bg); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 14px; }
+    .pedido-tot-item { flex: 1; text-align: center; }
+    .pedido-tot-val { font-size: 15px; font-weight: 800; font-family: 'Space Mono', monospace; }
+    .pedido-tot-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-top: 2px; }
+
+    /* Lista pedidos del día */
+    .pedido-dia-item {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 10px 12px; margin-bottom: 6px;
+    }
+    .pedido-dia-item:hover { border-color: var(--border-hover); }
+    .pdi-left { flex: 1; }
+    .pdi-sucursal { font-size: 13px; font-weight: 800; margin-bottom: 4px; }
+    .pdi-variedades { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+    .pdi-var-tag {
+      font-size: 10px; background: var(--surface2); border-radius: 4px; padding: 2px 6px;
+      color: var(--text-secondary); font-family: 'Space Mono', monospace;
+    }
+    .pdi-var-tag.delta-pos { color: var(--green); }
+    .pdi-var-tag.delta-neg { color: var(--red); }
+    .pdi-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .pdi-total { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 800; color: var(--green); }
+    .pdi-actions { display: flex; gap: 4px; }
+
+    /* Semanas list */
+    .semanas-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .semana-list-item {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 12px 14px; cursor: pointer; transition: border-color var(--transition);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .semana-list-item:hover { border-color: var(--border-hover); }
+    .semana-list-item.activa { border-color: var(--accent); }
+    .semana-list-item.cerrada { border-color: var(--green); }
+    .sli-left { flex: 1; }
+    .sli-periodo { font-size: 12px; font-weight: 800; margin-bottom: 3px; }
+    .sli-progreso { font-size: 10px; color: var(--muted); }
+    .sli-right { text-align: right; }
+    .sli-docenas { font-size: 13px; font-weight: 800; font-family: 'Space Mono', monospace; color: var(--accent-light); }
+    .sli-estado { font-size: 9px; text-transform: uppercase; letter-spacing: .4px; margin-top: 3px; }
+
     /* ======================== DAY POPUP ======================== */
     .day-popup {
       position: absolute; top: 32px; left: 50%; transform: translateX(-50%);
@@ -768,46 +847,121 @@
 
       <!-- ========== COBRO SEMANAL ========== -->
       <div class="section" id="sec-cierre">
+
+        <!-- ── VISTA: Lista de semanas ── -->
         <div id="semanaListView">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
-            <h2 style="font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-secondary)">Cobro Semanal</h2>
+          <div class="pedidos-header">
+            <h2 style="font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-secondary)">Pedidos Semanales</h2>
             <button class="btn btn-sm" onclick="openCreateSemanaModal()">➕ Nueva Semana</button>
           </div>
-
-          <!-- Navegación de mes -->
-          <div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:12px">
-            <button class="btn btn-secondary btn-sm" onclick="calNavMonth(-1)">← Anterior</button>
-            <div id="calMonthLabel" style="font-family:'Space Mono',monospace;font-weight:700;font-size:14px;color:var(--accent-light);text-transform:uppercase;letter-spacing:.5px">-</div>
-            <button class="btn btn-secondary btn-sm" onclick="calNavMonth(1)">Siguiente →</button>
+          <div class="semanas-list" id="semanasList"></div>
+          <div id="noSemanasMsg" style="text-align:center;padding:40px;color:var(--muted);font-size:13px;display:none">
+            No hay semanas creadas aún.<br>
+            <button class="btn btn-sm" style="margin-top:12px" onclick="openCreateSemanaModal()">➕ Crear primera semana</button>
           </div>
-
-          <!-- Grilla calendario -->
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px">
-            <!-- Cabecera días -->
-            <div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)">
-              <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:8px 0;text-transform:uppercase;letter-spacing:.5px">Lun</div>
-              <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:8px 0;text-transform:uppercase;letter-spacing:.5px">Mar</div>
-              <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:8px 0;text-transform:uppercase;letter-spacing:.5px">Mié</div>
-              <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:8px 0;text-transform:uppercase;letter-spacing:.5px">Jue</div>
-              <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:8px 0;text-transform:uppercase;letter-spacing:.5px">Vie</div>
-              <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:8px 0;text-transform:uppercase;letter-spacing:.5px">Sáb</div>
-              <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:8px 0;text-transform:uppercase;letter-spacing:.5px">Dom</div>
-            </div>
-            <!-- Celdas generadas por JS -->
-            <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr)"></div>
-          </div>
-
-          <!-- Leyenda -->
-          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:6px">
-            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)"><span style="width:10px;height:10px;border-radius:2px;background:var(--accent-dim);border:1px solid var(--accent);display:inline-block"></span>Semana abierta</div>
-            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)"><span style="width:10px;height:10px;border-radius:2px;background:var(--green-dim);border:1px solid var(--green);display:inline-block"></span>Semana cerrada</div>
-            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)"><span style="width:10px;height:10px;border-radius:2px;background:var(--surface3);display:inline-block"></span>Sin semana</div>
-          </div>
-
-          <!-- Resumen mensual -->
-          <div id="calMonthlySummary"></div>
         </div>
 
+        <!-- ── VISTA: Detalle de semana con pedidos por día ── -->
+        <div id="semanaDiariaView" style="display:none">
+
+          <div class="detail-header">
+            <button class="btn-back" onclick="backToSemanasList()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
+              Volver
+            </button>
+            <div>
+              <div style="font-size:16px;font-weight:800" id="semanaDiariaTitle">Semana</div>
+              <div style="font-size:11px;color:var(--muted)" id="semanaDiariaSubtitle"></div>
+            </div>
+          </div>
+
+          <!-- Progreso de días -->
+          <div class="semana-progress">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:12px;font-weight:700;color:var(--text-secondary)">Progreso de la semana</span>
+              <span style="font-size:11px;font-family:'Space Mono',monospace;color:var(--accent-light)" id="sdProgressLabel">0 / 6 días</span>
+            </div>
+            <div class="semana-progress-bar-wrap">
+              <div class="semana-progress-bar" id="sdProgressBar" style="width:0%"></div>
+            </div>
+            <div style="display:flex;gap:16px;font-size:10px;color:var(--muted)">
+              <span>📦 <span id="sdTotalDoc" style="font-family:'Space Mono',monospace;color:var(--accent-light)">0</span> docenas</span>
+              <span>💰 <span id="sdTotalFac" style="font-family:'Space Mono',monospace;color:var(--green)">$0</span></span>
+              <span>⭐ <span id="sdTotalReg" style="font-family:'Space Mono',monospace;color:var(--yellow)">$0</span> regalías</span>
+            </div>
+          </div>
+
+          <!-- Días de la semana (Mar–Dom) -->
+          <div class="dias-grid" id="diasGrid"></div>
+
+          <!-- Formulario pedido del día seleccionado -->
+          <div class="pedido-form-wrap" id="pedidoDiaFormWrap" style="display:none">
+            <div class="pedido-form-title">
+              <span id="pedidoDiaFormTitle">Pedido del día</span>
+              <button class="btn-close" style="position:static;font-size:18px" onclick="cerrarFormPedidoDia()">×</button>
+            </div>
+
+            <div class="form-group" style="margin-bottom:12px">
+              <label>Sucursal *</label>
+              <select id="pdSucursal" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px">
+                <option value="">— Seleccionar sucursal —</option>
+              </select>
+            </div>
+
+            <!-- Grid de variedades -->
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Variedades</div>
+            <div class="variedades-grid" id="variedadesGrid">
+              <!-- header row -->
+              <div class="vg-header">Variedad</div>
+              <div class="vg-header" style="text-align:center">Docenas</div>
+              <div class="vg-header" style="text-align:center">Variación</div>
+              <!-- rows generadas por JS -->
+            </div>
+
+            <!-- Totales -->
+            <div class="pedido-totales">
+              <div class="pedido-tot-item">
+                <div class="pedido-tot-val" id="pdTotalDoc" style="color:var(--accent-light)">0</div>
+                <div class="pedido-tot-lbl">Docenas</div>
+              </div>
+              <div class="pedido-tot-item">
+                <div class="pedido-tot-val" id="pdTotalFac" style="color:var(--green)">$0</div>
+                <div class="pedido-tot-lbl">Subtotal</div>
+              </div>
+              <div class="pedido-tot-item">
+                <div class="pedido-tot-val" id="pdTotalReg" style="color:var(--yellow)">$0</div>
+                <div class="pedido-tot-lbl">Regalía</div>
+              </div>
+              <div class="pedido-tot-item">
+                <div class="pedido-tot-val" id="pdTotalDelta" style="color:var(--muted)">±0</div>
+                <div class="pedido-tot-lbl">Δ variación</div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-secondary" style="flex:1;justify-content:center" onclick="cerrarFormPedidoDia()">Cancelar</button>
+              <button class="btn" style="flex:2;justify-content:center" onclick="guardarPedidoDia()">💾 Guardar pedido</button>
+            </div>
+          </div>
+
+          <!-- Lista de pedidos del día seleccionado -->
+          <div id="pedidosDiaList"></div>
+
+          <!-- Resumen semanal por sucursal -->
+          <div id="resumenSemanalWrap" style="display:none;margin-top:16px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Resumen por sucursal</div>
+            <div class="table-wrap">
+              <table class="mov-table" id="resumenSemanalTable">
+                <thead>
+                  <tr><th>Sucursal</th><th>Docenas</th><th>Facturado</th><th>% Reg.</th><th>Regalía</th></tr>
+                </thead>
+                <tbody id="resumenSemanalBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── VISTA: Cierre de semana (se mantiene para flujo existente) ── -->
         <!-- Hidden inputs needed by calcularCierreSemana / confirmarCierreSemana — keep IDs intact -->
         <span id="btnNuevoPedido" style="display:none"></span>
         <span id="totWeekDocenas" style="display:none">0</span>
@@ -818,7 +972,7 @@
           <div class="detail-header">
             <button class="btn-back" onclick="backToWeekView()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
-              Volver a Pedidos
+              Volver a Semana
             </button>
             <div>
               <div style="font-size:18px;font-weight:800">Cierre Semanal de Cobros</div>
@@ -836,12 +990,7 @@
             <table class="mov-table">
               <thead>
                 <tr>
-                  <th>Franquicia</th>
-                  <th>Docenas</th>
-                  <th>Facturado</th>
-                  <th>% Regalía</th>
-                  <th>Monto a Cobrar</th>
-                  <th>Estado</th>
+                  <th>Franquicia</th><th>Docenas</th><th>Facturado</th><th>% Regalía</th><th>Monto a Cobrar</th><th>Estado</th>
                 </tr>
               </thead>
               <tbody id="closingTableBody"></tbody>
@@ -853,6 +1002,7 @@
             <button class="btn" id="btnConfirmClosing" onclick="confirmarCierreSemana()" style="flex:1;justify-content:center">✅ Confirmar y Registrar Deudas</button>
           </div>
         </div>
+
       </div>
 
       <!-- ========== DEUDAS ========== -->
@@ -981,6 +1131,14 @@
               <label>R2 Public Custom Domain / URL</label>
               <input type="text" id="cfgR2Domain" placeholder="https://pub-xxxx.r2.dev">
             </div>
+          </div>
+
+          <!-- ── Variedades de empanadas ── -->
+          <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:20px">
+            <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-secondary);margin-bottom:6px">🫔 Variedades de Empanadas</div>
+            <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Definí los tipos de empanadas disponibles y el precio por docena de cada uno.</div>
+            <div id="variedadesConfigList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+            <button class="btn btn-secondary btn-sm" onclick="agregarVariedadConfig()">➕ Agregar variedad</button>
           </div>
 
           <div style="display:flex;gap:10px;margin-top:20px">
@@ -1195,13 +1353,13 @@
   <div class="modal-overlay" id="modalCrearSemana">
     <div class="modal">
       <div class="modal-header">
-        <div class="modal-title">Crear Nueva Semana de Cierre</div>
+        <div class="modal-title">Nueva Semana de Pedidos</div>
         <button class="btn-close" onclick="closeModal('modalCrearSemana')">×</button>
       </div>
       <div class="form-group">
         <label>Seleccionar una fecha de la semana *</label>
         <input type="date" id="fSemanaFechaInput" onchange="updateCalculatedWeekDates()">
-        <div class="form-hint" style="color:var(--accent-light)">El sistema calculará automáticamente la semana de lunes a domingo para esa fecha.</div>
+        <div class="form-hint" style="color:var(--accent-light)">El sistema tomará la semana completa (Mar–Dom, 6 días de pedidos).</div>
       </div>
       <div class="form-row" style="background:var(--bg-elevated);border:1px solid var(--border);padding:12px;border-radius:var(--radius-sm);margin-bottom:15px">
         <div>
@@ -1216,6 +1374,43 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal('modalCrearSemana')">Cancelar</button>
         <button class="btn" onclick="saveNuevaSemana()">Crear Semana</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal editar pedido diario -->
+  <div class="modal-overlay" id="modalEditPedidoDia">
+    <div class="modal" style="max-width:560px">
+      <div class="modal-header">
+        <div class="modal-title" id="editPedidoDiaTitle">Editar Pedido</div>
+        <button class="btn-close" onclick="closeModal('modalEditPedidoDia')">×</button>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Sucursal</label>
+        <select id="editPdSucursal" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px"></select>
+      </div>
+      <div class="variedades-grid" id="editVariedadesGrid">
+        <div class="vg-header">Variedad</div>
+        <div class="vg-header" style="text-align:center">Docenas</div>
+        <div class="vg-header" style="text-align:center">Variación</div>
+      </div>
+      <div class="pedido-totales" style="margin-top:10px">
+        <div class="pedido-tot-item">
+          <div class="pedido-tot-val" id="editPdTotalDoc" style="color:var(--accent-light)">0</div>
+          <div class="pedido-tot-lbl">Docenas</div>
+        </div>
+        <div class="pedido-tot-item">
+          <div class="pedido-tot-val" id="editPdTotalFac" style="color:var(--green)">$0</div>
+          <div class="pedido-tot-lbl">Subtotal</div>
+        </div>
+        <div class="pedido-tot-item">
+          <div class="pedido-tot-val" id="editPdTotalReg" style="color:var(--yellow)">$0</div>
+          <div class="pedido-tot-lbl">Regalía</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modalEditPedidoDia')">Cancelar</button>
+        <button class="btn" onclick="confirmarEditPedidoDia()">💾 Guardar cambios</button>
       </div>
     </div>
   </div>
@@ -1610,6 +1805,7 @@
       try { state.pedidos = JSON.parse(localStorage.getItem('empapro_pedidos')) || []; } catch(e) { state.pedidos = []; }
       try { state.cierres = JSON.parse(localStorage.getItem('empapro_cierres')) || []; } catch(e) { state.cierres = []; }
       try { state.movimientos = JSON.parse(localStorage.getItem('empapro_movimientos')) || []; } catch(e) { state.movimientos = []; }
+      try { state.pedidosDiarios = JSON.parse(localStorage.getItem('empapro_pedidos_diarios')) || []; } catch(e) { state.pedidosDiarios = []; }
 
       if (state.semanas.length > 0) {
         selectedSemanaIndex = state.semanas.length - 1;
@@ -1622,6 +1818,7 @@
       localStorage.setItem('empapro_pedidos', JSON.stringify(state.pedidos));
       localStorage.setItem('empapro_cierres', JSON.stringify(state.cierres));
       localStorage.setItem('empapro_movimientos', JSON.stringify(state.movimientos));
+      localStorage.setItem('empapro_pedidos_diarios', JSON.stringify(state.pedidosDiarios || []));
       localStorage.setItem('empapro_sync_queue', JSON.stringify(syncQueue));
     }
 
@@ -2003,7 +2200,7 @@
       
       if (section === 'dashboard') renderDashboard();
       if (section === 'franquicias') { showListView(); renderFranquicias(); }
-      if (section === 'cierre') renderWeekView();
+      if (section === 'cierre') { renderSemanasList(); renderVariedadesConfig(); }
       if (section === 'deudas') renderDeudasTab();
       if (section === 'reportes') renderReportesTab();
       if (section === 'config') renderConfigTab();
@@ -2387,9 +2584,7 @@
     const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
     function renderWeekView() {
-      document.getElementById('semanaListView').style.display = 'block';
-      document.getElementById('semanaCierreView').style.display = 'none';
-      renderCalendar();
+      backToSemanasList();
     }
 
     function viewSelectedSemanaPedidos() { /* no-op, kept for compatibility */ }
@@ -2398,7 +2593,7 @@
       calMonth += dir;
       if (calMonth > 11) { calMonth = 0; calYear++; }
       if (calMonth < 0) { calMonth = 11; calYear--; }
-      renderCalendar();
+      // Calendar view no longer primary - no-op
     }
 
     function renderCalendar() {
@@ -2947,9 +3142,9 @@
       queueAction('close_semana', { semana: week.semana, fechaCierre, closures: closingTempList });
       saveDataLocal();
       showToast('Cierre confirmado y deudas registradas ✓', 'success');
+      renderSemanasList();
       backToWeekView();
-      renderCalendar();
-      openDetalleSemana(week.semana);
+      openSemanaDiaria(week.semana);
     }
 
     // ===================== DEUDAS / MOVIMIENTOS =====================
@@ -3181,6 +3376,541 @@
 
       exportXmlTable(headers, rows, `${MESES[calMonth]} ${calYear}`, `emapro-${MESES[calMonth].toLowerCase()}-${calYear}.xls`);
       showToast(`Excel de ${MESES[calMonth]} descargado ✓`);
+    }
+
+    // ══════════════════════════════════════════════════════
+    // MÓDULO PEDIDOS DIARIOS
+    // ══════════════════════════════════════════════════════
+
+    // --- State ---
+    let currentSemanaKey = null;   // semana activa en semanaDiariaView
+    let currentDiaStr   = null;   // día activo (YYYY-MM-DD)
+    let editingPedidoId = null;   // ID del pedido en edición
+
+    // --- Variedades config helpers ---
+    function getVariedades() {
+      try { return JSON.parse(localStorage.getItem('empapro_variedades') || '[]'); } catch { return []; }
+    }
+    function saveVariedades(arr) {
+      localStorage.setItem('empapro_variedades', JSON.stringify(arr));
+    }
+
+    // --- pedidos_diarios helpers (sub-array dentro de state) ---
+    function getPedidosDiarios() {
+      return state.pedidosDiarios || [];
+    }
+    function savePedidoDiario(pd) {
+      if (!state.pedidosDiarios) state.pedidosDiarios = [];
+      const idx = state.pedidosDiarios.findIndex(p => p.id === pd.id);
+      if (idx >= 0) state.pedidosDiarios[idx] = pd;
+      else state.pedidosDiarios.push(pd);
+      saveDataLocal();
+    }
+    function deletePedidoDiario(id) {
+      if (!state.pedidosDiarios) return;
+      state.pedidosDiarios = state.pedidosDiarios.filter(p => p.id !== id);
+      saveDataLocal();
+    }
+
+    // ── Días de la semana (Mar–Dom), Lun se salta ──
+    const DIAS_PEDIDO = [
+      { key: 2, nombre: 'Mar' },
+      { key: 3, nombre: 'Mié' },
+      { key: 4, nombre: 'Jue' },
+      { key: 5, nombre: 'Vie' },
+      { key: 6, nombre: 'Sáb' },
+      { key: 0, nombre: 'Dom' }
+    ];
+
+    // ── Generar las 6 fechas de pedido de una semana dado el lunes ──
+    function getDiasPedido(semanaKey) {
+      // semanaKey = lunes YYYY-MM-DD
+      const lunes = new Date(semanaKey + 'T12:00:00');
+      return DIAS_PEDIDO.map(d => {
+        const fecha = new Date(lunes);
+        const offset = d.key === 0 ? 6 : d.key - 1; // lunes=1 en JS, ajustar a offset desde lunes
+        fecha.setDate(lunes.getDate() + offset);
+        return { nombre: d.nombre, fecha: fecha.toISOString().slice(0,10) };
+      });
+    }
+
+    // ── Lista de semanas ──
+    function renderSemanasList() {
+      const el = document.getElementById('semanasList');
+      const noMsg = document.getElementById('noSemanasMsg');
+      if (!el) return;
+      const semanas = [...state.semanas].sort((a,b) => b.semana.localeCompare(a.semana));
+      if (semanas.length === 0) {
+        el.innerHTML = '';
+        noMsg.style.display = '';
+        return;
+      }
+      noMsg.style.display = 'none';
+      el.innerHTML = semanas.map(w => {
+        const dias = getDiasPedido(w.semana);
+        const pds = getPedidosDiarios().filter(p => p.semana === w.semana);
+        const diasConPedido = new Set(pds.map(p => p.fecha)).size;
+        const totalDoc = pds.reduce((a,p) => a + p.totalDocenas, 0);
+        const totalFac = pds.reduce((a,p) => a + p.subtotal, 0);
+        const isCerrada = w.estado === 'cerrada';
+        return `
+          <div class="semana-list-item ${isCerrada ? 'cerrada' : 'activa'}" onclick="openSemanaDiaria('${w.semana}')">
+            <div class="sli-left">
+              <div class="sli-periodo">${formatDateShort(w.fechaInicio)} — ${formatDateShort(w.fechaFin)}</div>
+              <div class="sli-progreso">${diasConPedido} / 6 días · ${pds.length} pedido${pds.length!==1?'s':''} · ${totalDoc.toFixed(0)} docenas</div>
+            </div>
+            <div class="sli-right">
+              <div class="sli-docenas">${fmt(totalFac)}</div>
+              <div class="sli-estado" style="color:${isCerrada?'var(--green)':'var(--accent-light)'}">${isCerrada?'✅ Cerrada':'🟡 Abierta'}</div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function backToSemanasList() {
+      document.getElementById('semanaListView').style.display = 'block';
+      document.getElementById('semanaDiariaView').style.display = 'none';
+      document.getElementById('semanaCierreView').style.display = 'none';
+      currentSemanaKey = null;
+      currentDiaStr = null;
+    }
+
+    // ── Abrir detalle de semana ──
+    function openSemanaDiaria(semanaKey) {
+      currentSemanaKey = semanaKey;
+      currentDiaStr = null;
+      const w = state.semanas.find(s => s.semana === semanaKey);
+      if (!w) return;
+
+      document.getElementById('semanaDiariaTitle').textContent = `Semana ${formatDateShort(w.fechaInicio)} — ${formatDateShort(w.fechaFin)}`;
+      document.getElementById('semanaDiariaSubtitle').textContent = w.estado === 'cerrada' ? '✅ Semana cerrada' : '🟡 En curso';
+
+      document.getElementById('semanaListView').style.display = 'none';
+      document.getElementById('semanaDiariaView').style.display = 'block';
+      document.getElementById('semanaCierreView').style.display = 'none';
+
+      cerrarFormPedidoDia();
+      renderDiasGrid();
+      renderResumenSemanal();
+    }
+
+    function renderDiasGrid() {
+      const grid = document.getElementById('diasGrid');
+      if (!grid || !currentSemanaKey) return;
+      const today = todayISO();
+      const dias = getDiasPedido(currentSemanaKey);
+      const pds = getPedidosDiarios().filter(p => p.semana === currentSemanaKey);
+      const w = state.semanas.find(s => s.semana === currentSemanaKey);
+      const isCerrada = w && w.estado === 'cerrada';
+
+      let diasConPedido = 0;
+      let totalDoc = 0, totalFac = 0, totalReg = 0;
+
+      grid.innerHTML = dias.map(d => {
+        const dPeds = pds.filter(p => p.fecha === d.fecha);
+        const docDia = dPeds.reduce((a,p) => a + p.totalDocenas, 0);
+        const facDia = dPeds.reduce((a,p) => a + p.subtotal, 0);
+        totalDoc += docDia;
+        totalFac += facDia;
+        dPeds.forEach(p => {
+          const f = state.franquicias.find(f => f.alias === p.franquiciaAlias);
+          if (f) totalReg += p.subtotal * (f.regalia/100);
+        });
+        if (dPeds.length > 0) diasConPedido++;
+        const isHoy = d.fecha === today;
+        const isActivo = d.fecha === currentDiaStr;
+        const hasPed = dPeds.length > 0;
+        return `<div class="dia-card ${hasPed?'dia-con-pedidos':''} ${isActivo?'dia-activo':''} ${isHoy?'dia-hoy':''}" 
+                  onclick="${isCerrada ? '' : `seleccionarDia('${d.fecha}')`}" 
+                  style="${isCerrada ? 'cursor:default;opacity:.7' : ''}">
+          <div class="dia-card-nombre">${d.nombre}</div>
+          <div class="dia-card-fecha">${new Date(d.fecha+'T12:00:00').getDate()}</div>
+          ${hasPed ? `<div class="dia-card-count">${dPeds.length} ped.</div><div class="dia-card-docenas">${docDia.toFixed(0)}doc</div>` : '<div class="dia-card-count" style="color:var(--muted)">—</div>'}
+        </div>`;
+      }).join('');
+
+      // Actualizar progreso
+      const pct = Math.round((diasConPedido / 6) * 100);
+      const bar = document.getElementById('sdProgressBar');
+      if (bar) { bar.style.width = pct + '%'; bar.className = 'semana-progress-bar' + (diasConPedido === 6 ? ' full' : ''); }
+      const lbl = document.getElementById('sdProgressLabel');
+      if (lbl) lbl.textContent = `${diasConPedido} / 6 días${diasConPedido===6?' · ¡Completa! 🎉':''}`;
+      const sdDoc = document.getElementById('sdTotalDoc'); if (sdDoc) sdDoc.textContent = totalDoc.toFixed(0);
+      const sdFac = document.getElementById('sdTotalFac'); if (sdFac) sdFac.textContent = fmt(totalFac);
+      const sdReg = document.getElementById('sdTotalReg'); if (sdReg) sdReg.textContent = fmt(totalReg);
+
+      // Auto-cierre si 6 días completos y semana abierta
+      if (diasConPedido === 6 && w && w.estado !== 'cerrada') {
+        setTimeout(() => triggerAutoCierre(currentSemanaKey), 400);
+      }
+    }
+
+    function seleccionarDia(fechaStr) {
+      currentDiaStr = fechaStr;
+      renderDiasGrid();
+      mostrarFormPedidoDia(fechaStr);
+      renderPedidosDia(fechaStr);
+    }
+
+    // ── Formulario pedido del día ──
+    function mostrarFormPedidoDia(fechaStr) {
+      const wrap = document.getElementById('pedidoDiaFormWrap');
+      if (!wrap) return;
+      wrap.style.display = 'block';
+      const d = new Date(fechaStr + 'T12:00:00');
+      const nombres = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+      document.getElementById('pedidoDiaFormTitle').textContent =
+        `Nuevo pedido — ${nombres[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}`;
+
+      // Poblar select sucursales
+      const sel = document.getElementById('pdSucursal');
+      sel.innerHTML = '<option value="">— Seleccionar sucursal —</option>' +
+        state.franquicias.map(f => `<option value="${esc(f.alias)}">${esc(f.alias)}</option>`).join('');
+      sel.onchange = recalcPedidoDia;
+
+      // Grid de variedades
+      renderVariedadesGrid('variedadesGrid', 'pd_');
+      recalcPedidoDia();
+    }
+
+    function renderVariedadesGrid(gridId, prefix) {
+      const grid = document.getElementById(gridId);
+      if (!grid) return;
+      const variedades = getVariedades();
+      // mantener header
+      grid.innerHTML = `
+        <div class="vg-header">Variedad</div>
+        <div class="vg-header" style="text-align:center">Docenas</div>
+        <div class="vg-header" style="text-align:center">Variación</div>`;
+      if (variedades.length === 0) {
+        grid.innerHTML += `<div style="grid-column:1/-1;font-size:11px;color:var(--muted);padding:8px 0">
+          No hay variedades configuradas. Andá a <strong>Ajustes → Variedades</strong>.
+        </div>`;
+        return;
+      }
+      variedades.forEach((v, i) => {
+        const label = document.createElement('div');
+        label.className = 'vg-variedad-label';
+        label.textContent = v.nombre;
+        grid.appendChild(label);
+
+        const inp = document.createElement('input');
+        inp.type = 'number'; inp.min = '0'; inp.step = '0.5';
+        inp.className = 'vg-input'; inp.value = '0';
+        inp.id = `${prefix}doc_${i}`;
+        inp.oninput = () => { if (prefix === 'pd_') recalcPedidoDia(); else recalcEditPedido(); };
+        grid.appendChild(inp);
+
+        const delta = document.createElement('input');
+        delta.type = 'number'; delta.step = '1';
+        delta.className = 'vg-input delta'; delta.value = '0';
+        delta.placeholder = '±0';
+        delta.id = `${prefix}delta_${i}`;
+        delta.oninput = () => { if (prefix === 'pd_') recalcPedidoDia(); else recalcEditPedido(); };
+        grid.appendChild(delta);
+      });
+    }
+
+    function recalcPedidoDia() {
+      const variedades = getVariedades();
+      let totalDoc = 0, totalFac = 0, totalDelta = 0;
+      variedades.forEach((v, i) => {
+        const doc = parseFloat(document.getElementById(`pd_doc_${i}`)?.value || 0) || 0;
+        const delta = parseFloat(document.getElementById(`pd_delta_${i}`)?.value || 0) || 0;
+        totalDoc += doc;
+        totalFac += doc * (v.precio || 0);
+        totalDelta += delta;
+      });
+      const alias = document.getElementById('pdSucursal')?.value || '';
+      const f = state.franquicias.find(f => f.alias === alias);
+      const totalReg = f ? totalFac * (f.regalia / 100) : 0;
+
+      const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      el('pdTotalDoc', totalDoc.toFixed(1));
+      el('pdTotalFac', fmt(totalFac));
+      el('pdTotalReg', fmt(totalReg));
+      el('pdTotalDelta', (totalDelta >= 0 ? '+' : '') + totalDelta);
+      document.getElementById('pdTotalDelta').style.color = totalDelta > 0 ? 'var(--green)' : totalDelta < 0 ? 'var(--red)' : 'var(--muted)';
+    }
+
+    function guardarPedidoDia() {
+      const alias = document.getElementById('pdSucursal')?.value;
+      if (!alias) { showToast('Seleccioná una sucursal', 'error'); return; }
+      if (!currentDiaStr || !currentSemanaKey) return;
+      const variedades = getVariedades();
+      const items = variedades.map((v, i) => ({
+        nombre: v.nombre,
+        precio: v.precio || 0,
+        docenas: parseFloat(document.getElementById(`pd_doc_${i}`)?.value || 0) || 0,
+        delta: parseFloat(document.getElementById(`pd_delta_${i}`)?.value || 0) || 0
+      })).filter(it => it.docenas > 0 || it.delta !== 0);
+
+      if (items.length === 0) { showToast('Ingresá al menos una variedad con docenas > 0', 'error'); return; }
+
+      const totalDocenas = items.reduce((a,it) => a + it.docenas, 0);
+      const subtotal = items.reduce((a,it) => a + it.docenas * it.precio, 0);
+      const f = state.franquicias.find(f => f.alias === alias);
+
+      const pd = {
+        id: genId(),
+        semana: currentSemanaKey,
+        fecha: currentDiaStr,
+        franquiciaAlias: alias,
+        items,
+        totalDocenas,
+        subtotal,
+        precioDocena: totalDocenas > 0 ? subtotal / totalDocenas : 0,
+        docenas: totalDocenas,  // compatibilidad con flujo existente
+        cerrado: false
+      };
+
+      savePedidoDiario(pd);
+      // Sincronizar con state.pedidos para compatibilidad con cierre/exportación
+      syncPedidoDiarioToStatePedidos(pd);
+      queueAction('add_pedido', {
+        id: pd.id, semana: pd.semana, fechaInicio: state.semanas.find(s=>s.semana===pd.semana)?.fechaInicio || pd.semana,
+        fechaFin: state.semanas.find(s=>s.semana===pd.semana)?.fechaFin || pd.semana,
+        franquiciaAlias: pd.franquiciaAlias, docenas: pd.totalDocenas,
+        precioDocena: pd.precioDocena, subtotal: pd.subtotal, cerrado: false
+      });
+      showToast('Pedido guardado ✓');
+      cerrarFormPedidoDia();
+      renderDiasGrid();
+      renderPedidosDia(currentDiaStr);
+      renderResumenSemanal();
+      renderSemanasList();
+    }
+
+    function syncPedidoDiarioToStatePedidos(pd) {
+      // Mantener state.pedidos actualizado para que funcionen cierre, exportación, etc.
+      if (!state.pedidos) state.pedidos = [];
+      const idx = state.pedidos.findIndex(p => p.id === pd.id);
+      const entry = { id: pd.id, semana: pd.semana, franquiciaAlias: pd.franquiciaAlias,
+        docenas: pd.totalDocenas, precioDocena: pd.precioDocena, subtotal: pd.subtotal, cerrado: pd.cerrado };
+      if (idx >= 0) state.pedidos[idx] = entry;
+      else state.pedidos.push(entry);
+    }
+
+    function cerrarFormPedidoDia() {
+      const wrap = document.getElementById('pedidoDiaFormWrap');
+      if (wrap) wrap.style.display = 'none';
+    }
+
+    // ── Lista pedidos del día ──
+    function renderPedidosDia(fechaStr) {
+      const el = document.getElementById('pedidosDiaList');
+      if (!el || !currentSemanaKey) return;
+      const pds = getPedidosDiarios().filter(p => p.semana === currentSemanaKey && p.fecha === fechaStr);
+      if (pds.length === 0) {
+        el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Sin pedidos para este día. Usá el formulario de arriba para agregar.</div>`;
+        return;
+      }
+      const w = state.semanas.find(s => s.semana === currentSemanaKey);
+      const isCerrada = w && w.estado === 'cerrada';
+      el.innerHTML = pds.map(pd => {
+        const f = state.franquicias.find(f => f.alias === pd.franquiciaAlias);
+        const reg = f ? pd.subtotal*(f.regalia/100) : 0;
+        return `<div class="pedido-dia-item">
+          <div class="pdi-left">
+            <div class="pdi-sucursal">${esc(pd.franquiciaAlias)}</div>
+            <div class="pdi-variedades">
+              ${(pd.items||[]).map(it => {
+                const deltaHtml = it.delta !== 0 ? ` <span class="${it.delta>0?'delta-pos':'delta-neg'}">${it.delta>0?'+':''}${it.delta}</span>` : '';
+                return `<span class="pdi-var-tag">${esc(it.nombre)}: ${it.docenas}doc${deltaHtml}</span>`;
+              }).join('')}
+            </div>
+            <div style="font-size:10px;color:var(--muted)">Regalía: <span style="color:var(--yellow);font-family:'Space Mono'">${fmt(reg)}</span></div>
+          </div>
+          <div class="pdi-right">
+            <div class="pdi-total">${fmt(pd.subtotal)}</div>
+            ${!isCerrada ? `<div class="pdi-actions">
+              <button class="btn-icon btn-sm" onclick="abrirEditPedidoDia('${pd.id}')">✏️</button>
+              <button class="btn-icon btn-sm" style="color:var(--red)" onclick="eliminarPedidoDia('${pd.id}')">🗑️</button>
+            </div>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Resumen semanal por sucursal ──
+    function renderResumenSemanal() {
+      const wrap = document.getElementById('resumenSemanalWrap');
+      const body = document.getElementById('resumenSemanalBody');
+      if (!wrap || !body || !currentSemanaKey) return;
+      const pds = getPedidosDiarios().filter(p => p.semana === currentSemanaKey);
+      if (pds.length === 0) { wrap.style.display = 'none'; return; }
+
+      const bySucursal = {};
+      pds.forEach(pd => {
+        if (!bySucursal[pd.franquiciaAlias]) bySucursal[pd.franquiciaAlias] = { doc: 0, fac: 0 };
+        bySucursal[pd.franquiciaAlias].doc += pd.totalDocenas;
+        bySucursal[pd.franquiciaAlias].fac += pd.subtotal;
+      });
+
+      body.innerHTML = Object.entries(bySucursal).map(([alias, datos]) => {
+        const f = state.franquicias.find(f => f.alias === alias);
+        const regPct = f ? f.regalia : 0;
+        const reg = datos.fac * (regPct / 100);
+        return `<tr>
+          <td style="font-weight:700">${esc(alias)}</td>
+          <td>${datos.doc.toFixed(1)}</td>
+          <td style="font-family:'Space Mono'">${fmt(datos.fac)}</td>
+          <td>${regPct}%</td>
+          <td style="font-family:'Space Mono';color:var(--yellow);font-weight:700">${fmt(reg)}</td>
+        </tr>`;
+      }).join('');
+      wrap.style.display = 'block';
+    }
+
+    // ── Auto-cierre al completar 6 días ──
+    async function triggerAutoCierre(semanaKey) {
+      const w = state.semanas.find(s => s.semana === semanaKey);
+      if (!w || w.estado === 'cerrada') return;
+      showToast('🎉 Semana completa — generando cierre automático...');
+      selectedSemanaIndex = state.semanas.findIndex(s => s.semana === semanaKey);
+      // Pequeño delay para que el toast se vea
+      await new Promise(r => setTimeout(r, 800));
+      calcularCierreSemana();  // usa el flujo existente de cierre
+    }
+
+    // ── Editar pedido diario ──
+    function abrirEditPedidoDia(pdId) {
+      const pd = getPedidosDiarios().find(p => p.id === pdId);
+      if (!pd) return;
+      editingPedidoId = pdId;
+
+      const d = new Date(pd.fecha + 'T12:00:00');
+      const nombres = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+      document.getElementById('editPedidoDiaTitle').textContent =
+        `Editar — ${esc(pd.franquiciaAlias)} · ${nombres[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}`;
+
+      const sel = document.getElementById('editPdSucursal');
+      sel.innerHTML = state.franquicias.map(f =>
+        `<option value="${esc(f.alias)}" ${f.alias===pd.franquiciaAlias?'selected':''}>${esc(f.alias)}</option>`
+      ).join('');
+      sel.onchange = recalcEditPedido;
+
+      renderVariedadesGrid('editVariedadesGrid', 'epd_');
+
+      // Pre-cargar valores
+      const variedades = getVariedades();
+      variedades.forEach((v, i) => {
+        const existing = (pd.items||[]).find(it => it.nombre === v.nombre);
+        const docEl = document.getElementById(`epd_doc_${i}`);
+        const delEl = document.getElementById(`epd_delta_${i}`);
+        if (docEl) docEl.value = existing ? existing.docenas : 0;
+        if (delEl) delEl.value = existing ? (existing.delta||0) : 0;
+      });
+      recalcEditPedido();
+      document.getElementById('modalEditPedidoDia').classList.add('open');
+    }
+
+    function recalcEditPedido() {
+      const variedades = getVariedades();
+      let totalDoc = 0, totalFac = 0;
+      variedades.forEach((v, i) => {
+        const doc = parseFloat(document.getElementById(`epd_doc_${i}`)?.value || 0) || 0;
+        totalDoc += doc; totalFac += doc * (v.precio || 0);
+      });
+      const alias = document.getElementById('editPdSucursal')?.value || '';
+      const f = state.franquicias.find(f => f.alias === alias);
+      const reg = f ? totalFac*(f.regalia/100) : 0;
+      const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+      el('editPdTotalDoc', totalDoc.toFixed(1));
+      el('editPdTotalFac', fmt(totalFac));
+      el('editPdTotalReg', fmt(reg));
+    }
+
+    function confirmarEditPedidoDia() {
+      if (!editingPedidoId) return;
+      const pd = getPedidosDiarios().find(p => p.id === editingPedidoId);
+      if (!pd) return;
+      const alias = document.getElementById('editPdSucursal')?.value;
+      if (!alias) { showToast('Seleccioná una sucursal', 'error'); return; }
+      const variedades = getVariedades();
+      const items = variedades.map((v,i) => ({
+        nombre: v.nombre, precio: v.precio||0,
+        docenas: parseFloat(document.getElementById(`epd_doc_${i}`)?.value||0)||0,
+        delta: parseFloat(document.getElementById(`epd_delta_${i}`)?.value||0)||0
+      })).filter(it => it.docenas > 0 || it.delta !== 0);
+
+      const totalDocenas = items.reduce((a,it) => a+it.docenas, 0);
+      const subtotal = items.reduce((a,it) => a+it.docenas*it.precio, 0);
+
+      const updated = { ...pd, franquiciaAlias: alias, items, totalDocenas,
+        subtotal, precioDocena: totalDocenas>0 ? subtotal/totalDocenas : 0, docenas: totalDocenas };
+      savePedidoDiario(updated);
+      syncPedidoDiarioToStatePedidos(updated);
+      closeModal('modalEditPedidoDia');
+      showToast('Pedido actualizado ✓');
+      renderDiasGrid();
+      if (currentDiaStr) renderPedidosDia(currentDiaStr);
+      renderResumenSemanal();
+      renderSemanasList();
+      editingPedidoId = null;
+    }
+
+    function eliminarPedidoDia(pdId) {
+      if (!confirm('¿Eliminar este pedido?')) return;
+      deletePedidoDiario(pdId);
+      // Limpiar de state.pedidos también
+      state.pedidos = (state.pedidos||[]).filter(p => p.id !== pdId);
+      saveDataLocal();
+      showToast('Pedido eliminado');
+      renderDiasGrid();
+      if (currentDiaStr) renderPedidosDia(currentDiaStr);
+      renderResumenSemanal();
+      renderSemanasList();
+    }
+
+    // ── backToWeekView: override para nueva navegación ──
+    function backToWeekView() {
+      if (currentSemanaKey) {
+        openSemanaDiaria(currentSemanaKey);
+      } else {
+        backToSemanasList();
+      }
+    }
+
+    // ════════════════════════
+    // AJUSTES: Variedades config
+    // ════════════════════════
+    function renderVariedadesConfig() {
+      const el = document.getElementById('variedadesConfigList');
+      if (!el) return;
+      const variedades = getVariedades();
+      if (variedades.length === 0) {
+        el.innerHTML = `<div style="font-size:11px;color:var(--muted)">Sin variedades. Agregá la primera.</div>`;
+        return;
+      }
+      el.innerHTML = variedades.map((v, i) => `
+        <div style="display:grid;grid-template-columns:1fr 110px auto;gap:8px;align-items:center">
+          <input type="text" value="${esc(v.nombre)}" placeholder="Ej: Carne" 
+            oninput="updateVariedad(${i},'nombre',this.value)"
+            style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 10px;color:var(--text);font-family:inherit;font-size:12px">
+          <input type="number" value="${v.precio||0}" placeholder="Precio/doc" min="0"
+            oninput="updateVariedad(${i},'precio',parseFloat(this.value)||0)"
+            style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:7px 10px;color:var(--text);font-family:'Space Mono',monospace;font-size:12px">
+          <button class="btn-icon" style="color:var(--red)" onclick="eliminarVariedad(${i})">🗑️</button>
+        </div>`).join('');
+    }
+
+    function agregarVariedadConfig() {
+      const arr = getVariedades();
+      arr.push({ nombre: '', precio: 0 });
+      saveVariedades(arr);
+      renderVariedadesConfig();
+    }
+    function updateVariedad(i, campo, valor) {
+      const arr = getVariedades();
+      if (arr[i]) arr[i][campo] = valor;
+      saveVariedades(arr);
+    }
+    function eliminarVariedad(i) {
+      const arr = getVariedades();
+      arr.splice(i, 1);
+      saveVariedades(arr);
+      renderVariedadesConfig();
     }
 
     function renderSVGChart() {
