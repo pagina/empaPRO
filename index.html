@@ -517,6 +517,63 @@
     .cal-week-chip.chip-domingo.chip-open { border-right-color: var(--accent); }
     .cal-week-chip.chip-domingo.chip-closed { border-right-color: var(--green); }
 
+    /* ======================== DAY POPUP ======================== */
+    .day-popup {
+      position: absolute; top: 32px; left: 50%; transform: translateX(-50%);
+      z-index: 50; background: var(--surface2); border: 1px solid var(--border-hover);
+      border-radius: var(--radius-sm); padding: 10px 12px; min-width: 170px;
+      box-shadow: var(--shadow); pointer-events: none;
+      animation: fadeIn .15s ease;
+    }
+    .day-popup-title { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+    .day-popup-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; margin-bottom: 3px; }
+    .day-popup-row span:first-child { color: var(--text-secondary); }
+    .day-popup-row span:last-child { font-family: 'Space Mono', monospace; font-weight: 700; }
+    .day-popup-total { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 6px; }
+
+    /* Weekly summary row */
+    .cal-week-summary {
+      display: grid; grid-column: 1 / -1; grid-template-columns: repeat(7,1fr);
+      background: var(--surface2); border-top: 1px solid var(--border);
+    }
+    .cal-week-summary-cell {
+      padding: 5px 6px; font-size: 10px; border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 1px;
+    }
+    .cal-week-summary-cell:last-child { border-right: none; }
+    .cal-week-summary-lbl { color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .3px; }
+    .cal-week-summary-val { font-family: 'Space Mono', monospace; font-weight: 700; font-size: 10px; }
+
+    /* Monthly summary */
+    #calMonthlySummary {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px; margin-top: 12px;
+    }
+    .monthly-title {
+      font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px;
+      color: var(--text-secondary); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .monthly-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 14px; }
+    .monthly-card {
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 10px; text-align: center;
+    }
+    .monthly-card .mv { font-size: 15px; font-weight: 800; font-family: 'Space Mono', monospace; }
+    .monthly-card .ml { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-top: 2px; }
+    .monthly-weeks-list { display: flex; flex-direction: column; gap: 6px; }
+    .monthly-week-row {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 8px 12px; cursor: pointer; transition: border-color var(--transition);
+    }
+    .monthly-week-row:hover { border-color: var(--border-hover); }
+    .monthly-week-left { display: flex; flex-direction: column; gap: 2px; }
+    .monthly-week-period { font-size: 12px; font-weight: 700; }
+    .monthly-week-detail { font-size: 10px; color: var(--muted); }
+    .monthly-week-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    .monthly-week-fac { font-size: 13px; font-weight: 800; font-family: 'Space Mono', monospace; color: var(--green); }
+    .monthly-week-reg { font-size: 10px; color: var(--yellow); font-family: 'Space Mono', monospace; }
+
     /* ======================== CONFIG ======================== */
     .config-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
     .config-title { font-size: 16px; font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
@@ -746,6 +803,9 @@
             <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)"><span style="width:10px;height:10px;border-radius:2px;background:var(--green-dim);border:1px solid var(--green);display:inline-block"></span>Semana cerrada</div>
             <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)"><span style="width:10px;height:10px;border-radius:2px;background:var(--surface3);display:inline-block"></span>Sin semana</div>
           </div>
+
+          <!-- Resumen mensual -->
+          <div id="calMonthlySummary"></div>
         </div>
 
         <!-- Hidden inputs needed by calcularCierreSemana / confirmarCierreSemana — keep IDs intact -->
@@ -2346,17 +2406,16 @@
 
       const today = todayISO();
       const firstDay = new Date(calYear, calMonth, 1);
-      const lastDay = new Date(calYear, calMonth + 1, 0);
+      const lastDay  = new Date(calYear, calMonth + 1, 0);
 
-      // Lunes=0 offset para la grilla
-      let startDow = firstDay.getDay(); // 0=Dom
-      startDow = startDow === 0 ? 6 : startDow - 1; // convertir a lunes=0
+      let startDow = firstDay.getDay();
+      startDow = startDow === 0 ? 6 : startDow - 1;
 
       const totalCells = Math.ceil((startDow + lastDay.getDate()) / 7) * 7;
       const grid = document.getElementById('calGrid');
       grid.innerHTML = '';
 
-      // Construir un mapa de qué semana cae en qué día
+      // mapa día → semana
       const weekByDate = {};
       state.semanas.forEach(w => {
         const start = new Date(w.fechaInicio + 'T12:00:00');
@@ -2366,17 +2425,30 @@
         }
       });
 
+      // mapa día → pedidos de ese día (pedidos asociados a la semana que contiene ese día)
+      // Los pedidos no tienen fecha exacta de día, pero podemos mostrar los pedidos de la semana
+      // en el día lunes (inicio) de cada semana y el resumen acumulado en domingo
+      const ordersByWeek = {};
+      state.pedidos.forEach(p => {
+        if (!ordersByWeek[p.semana]) ordersByWeek[p.semana] = [];
+        ordersByWeek[p.semana].push(p);
+      });
+
+      // Agrupar semanas visibles en este mes
+      const weeksThisMonth = new Set();
+
       for (let i = 0; i < totalCells; i++) {
-        const dayOffset = i - startDow + 1;
-        const cellDate = new Date(calYear, calMonth, dayOffset);
-        const dateStr  = cellDate.toISOString().slice(0,10);
+        const dayOffset  = i - startDow + 1;
+        const cellDate   = new Date(calYear, calMonth, dayOffset);
+        const dateStr    = cellDate.toISOString().slice(0,10);
         const isThisMonth = cellDate.getMonth() === calMonth;
-        const isToday  = dateStr === today;
-        const dow      = cellDate.getDay(); // 0=Dom,1=Lun,...,6=Sáb → en nuestro grid col 0=Lun
-        const colInWeek = dow === 0 ? 6 : dow - 1; // 0=Lun, 6=Dom
+        const isToday    = dateStr === today;
+        const dow        = cellDate.getDay();
+        const colInWeek  = dow === 0 ? 6 : dow - 1;
 
         const cell = document.createElement('div');
         cell.className = `cal-cell${!isThisMonth ? ' other-month' : ''}${isToday ? ' today-cell' : ''}`;
+        cell.style.position = 'relative';
 
         const dayNum = document.createElement('div');
         dayNum.className = 'cal-day-num';
@@ -2385,12 +2457,20 @@
 
         const week = weekByDate[dateStr];
         if (week && isThisMonth) {
+          weeksThisMonth.add(week.semana);
+          const isClosed  = week.estado === 'cerrada';
+          const weekOrders = ordersByWeek[week.semana] || [];
+          const totalDoc   = weekOrders.reduce((a,o) => a + o.docenas, 0);
+          const totalFac   = weekOrders.reduce((a,o) => a + o.subtotal, 0);
+          let   totalReg   = 0;
+          weekOrders.forEach(o => {
+            const f = state.franquicias.find(f => f.alias === o.franquiciaAlias);
+            if (f) totalReg += o.subtotal * (f.regalia / 100);
+          });
+
+          // ── chip de semana (span across days) ──
           const chip = document.createElement('div');
-          const isClosed = week.estado === 'cerrada';
-          let posClass = '';
-          if (colInWeek === 0) posClass = 'chip-lunes';
-          else if (colInWeek === 6) posClass = 'chip-domingo';
-          else posClass = 'chip-mid';
+          let posClass = colInWeek === 0 ? 'chip-lunes' : colInWeek === 6 ? 'chip-domingo' : 'chip-mid';
           chip.className = `cal-week-chip ${isClosed ? 'chip-closed' : 'chip-open'} ${posClass}`;
 
           if (colInWeek === 0) {
@@ -2400,13 +2480,168 @@
           } else {
             chip.innerHTML = '&nbsp;';
           }
-
           chip.onclick = () => openDetalleSemana(week.semana);
           cell.appendChild(chip);
+
+          // ── mini resumen en lunes: pedidos del día / inicio de semana ──
+          if (colInWeek === 0 && weekOrders.length > 0) {
+            const mini = document.createElement('div');
+            mini.style.cssText = 'margin-top:4px;font-size:8px;color:var(--text-secondary);line-height:1.3;padding:0 2px';
+            mini.innerHTML = weekOrders.slice(0, 3).map(o =>
+              `<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                <span style="color:var(--muted)">${esc(o.franquiciaAlias.split(' ')[0])}</span>
+                <span style="font-family:'Space Mono';font-size:7px"> ${o.docenas}doc</span>
+              </div>`
+            ).join('') + (weekOrders.length > 3 ? `<div style="color:var(--muted)">+${weekOrders.length-3} más</div>` : '');
+            cell.appendChild(mini);
+          }
+
+          // ── resumen semanal completo en domingo ──
+          if (colInWeek === 6) {
+            const sumRow = document.createElement('div');
+            sumRow.style.cssText = `margin-top:4px;background:${isClosed ? 'rgba(16,185,129,.12)' : 'rgba(99,102,241,.10)'};border-radius:4px;padding:4px 5px;font-size:8px;border:1px solid ${isClosed ? 'var(--green)' : 'var(--accent)'};cursor:pointer`;
+            sumRow.onclick = () => openDetalleSemana(week.semana);
+            sumRow.innerHTML = `
+              <div style="font-weight:700;color:var(--text);margin-bottom:2px">${weekOrders.length} pedido${weekOrders.length!==1?'s':''}</div>
+              <div style="display:flex;justify-content:space-between">
+                <span style="color:var(--muted)">Doc:</span>
+                <span style="font-family:'Space Mono';font-weight:700">${totalDoc.toFixed(0)}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between">
+                <span style="color:var(--muted)">Fact:</span>
+                <span style="font-family:'Space Mono';font-weight:700;color:var(--green)">${fmt(totalFac)}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between">
+                <span style="color:var(--muted)">Reg:</span>
+                <span style="font-family:'Space Mono';font-weight:700;color:var(--yellow)">${fmt(totalReg)}</span>
+              </div>`;
+            cell.appendChild(sumRow);
+          }
+
+          // ── click en celda = popup del día con detalle de pedidos de esa semana ──
+          if (colInWeek !== 0 && colInWeek !== 6) {
+            cell.style.cursor = 'pointer';
+            cell.onclick = (e) => {
+              // cerrar popups existentes
+              document.querySelectorAll('.day-popup').forEach(p => p.remove());
+              const popup = document.createElement('div');
+              popup.className = 'day-popup';
+              popup.style.pointerEvents = 'auto';
+
+              const dayName = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'][colInWeek];
+              popup.innerHTML = `
+                <div class="day-popup-title">${dayName} ${cellDate.getDate()}/${cellDate.getMonth()+1} · ${isClosed ? '✅ Cerrada' : '🟡 Abierta'}</div>
+                ${weekOrders.length === 0
+                  ? '<div style="color:var(--muted);font-size:11px">Sin pedidos en esta semana</div>'
+                  : weekOrders.map(o => {
+                      const f = state.franquicias.find(f => f.alias === o.franquiciaAlias);
+                      const reg = f ? o.subtotal*(f.regalia/100) : 0;
+                      return `<div class="day-popup-row"><span>${esc(o.franquiciaAlias)}</span><span>${o.docenas}doc · ${fmt(o.subtotal)}</span></div>`;
+                    }).join('')
+                }
+                <div class="day-popup-row day-popup-total">
+                  <span>Total semana</span><span style="color:var(--green)">${fmt(totalFac)}</span>
+                </div>
+                <div class="day-popup-row">
+                  <span>Regalías</span><span style="color:var(--yellow)">${fmt(totalReg)}</span>
+                </div>
+                <div style="margin-top:8px">
+                  <button onclick="openDetalleSemana('${week.semana}');document.querySelectorAll('.day-popup').forEach(p=>p.remove())" 
+                    style="width:100%;background:var(--accent);border:none;border-radius:6px;color:#fff;font-family:inherit;font-size:11px;font-weight:700;padding:6px;cursor:pointer">
+                    ✏️ Ver / Editar semana
+                  </button>
+                </div>`;
+              cell.appendChild(popup);
+
+              // cerrar al hacer click fuera
+              setTimeout(() => {
+                document.addEventListener('click', function handler(ev) {
+                  if (!popup.contains(ev.target) && ev.target !== cell) {
+                    popup.remove();
+                    document.removeEventListener('click', handler);
+                  }
+                });
+              }, 50);
+
+              e.stopPropagation();
+            };
+          }
         }
 
         grid.appendChild(cell);
       }
+
+      // ── Resumen mensual debajo del calendario ──
+      renderMonthlySummary([...weeksThisMonth]);
+    }
+
+    function renderMonthlySummary(weekKeys) {
+      const el = document.getElementById('calMonthlySummary');
+      if (!el) return;
+
+      // filtrar semanas de este mes
+      const weeks = weekKeys.map(k => state.semanas.find(w => w.semana === k)).filter(Boolean);
+      weeks.sort((a,b) => a.semana.localeCompare(b.semana));
+
+      if (weeks.length === 0) {
+        el.innerHTML = '';
+        return;
+      }
+
+      let totalDocMes = 0, totalFacMes = 0, totalRegMes = 0;
+      const weekRows = weeks.map(w => {
+        const orders = state.pedidos.filter(p => p.semana === w.semana);
+        const doc = orders.reduce((a,o) => a + o.docenas, 0);
+        const fac = orders.reduce((a,o) => a + o.subtotal, 0);
+        let reg = 0;
+        orders.forEach(o => {
+          const f = state.franquicias.find(f => f.alias === o.franquiciaAlias);
+          if (f) reg += o.subtotal * (f.regalia / 100);
+        });
+        totalDocMes += doc;
+        totalFacMes += fac;
+        totalRegMes += reg;
+        return { w, orders, doc, fac, reg };
+      });
+
+      el.innerHTML = `
+        <div class="monthly-title">
+          <span>📅 Resumen de ${MESES[calMonth]} ${calYear}</span>
+          <span style="font-size:10px;color:var(--muted);font-weight:500">${weeks.length} semana${weeks.length!==1?'s':''}</span>
+        </div>
+        <div class="monthly-grid">
+          <div class="monthly-card">
+            <div class="mv" style="color:var(--accent-light)">${totalDocMes.toFixed(0)}</div>
+            <div class="ml">Docenas del mes</div>
+          </div>
+          <div class="monthly-card">
+            <div class="mv" style="color:var(--green)">${fmt(totalFacMes)}</div>
+            <div class="ml">Facturado total</div>
+          </div>
+          <div class="monthly-card">
+            <div class="mv" style="color:var(--yellow)">${fmt(totalRegMes)}</div>
+            <div class="ml">Regalías del mes</div>
+          </div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Detalle por semana</div>
+        <div class="monthly-weeks-list">
+          ${weekRows.map(({w, orders, doc, fac, reg}) => `
+            <div class="monthly-week-row" onclick="openDetalleSemana('${w.semana}')">
+              <div class="monthly-week-left">
+                <div class="monthly-week-period">Lun ${formatDateShort(w.fechaInicio)} — Dom ${formatDateShort(w.fechaFin)}</div>
+                <div class="monthly-week-detail">${orders.length} pedido${orders.length!==1?'s':''} · ${doc.toFixed(0)} docenas · <span style="color:${w.estado==='cerrada'?'var(--green)':'var(--accent-light)'}">${w.estado==='cerrada'?'✅ Cerrada':'🟡 Abierta'}</span></div>
+              </div>
+              <div class="monthly-week-right">
+                <div class="monthly-week-fac">${fmt(fac)}</div>
+                <div class="monthly-week-reg">Reg: ${fmt(reg)}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:10px">
+          <button class="btn btn-secondary btn-sm" onclick="exportMonthExcel()">📥 Exportar mes Excel</button>
+        </div>
+      `;
     }
 
     // ---- Modal detalle semana ----
@@ -2911,6 +3146,41 @@
       }).join('');
 
       renderSVGChart();
+    }
+
+    function exportMonthExcel() {
+      const weeks = [];
+      state.semanas.forEach(w => {
+        const d = new Date(w.fechaInicio + 'T12:00:00');
+        if (d.getFullYear() === calYear && d.getMonth() === calMonth) weeks.push(w);
+      });
+      if (weeks.length === 0) { showToast('Sin semanas en este mes', 'error'); return; }
+
+      const headers = ['Semana', 'Período', 'Franquicia', 'Docenas', 'Precio/doc', 'Subtotal', 'Regalía %', 'Regalía $', 'Estado semana'];
+      const rows = [];
+      weeks.sort((a,b) => a.semana.localeCompare(b.semana)).forEach(w => {
+        const orders = state.pedidos.filter(p => p.semana === w.semana);
+        if (orders.length === 0) {
+          rows.push([
+            { value: w.semana }, { value: `${formatDateShort(w.fechaInicio)} – ${formatDateShort(w.fechaFin)}` },
+            { value: '(sin pedidos)' }, { value: 0 }, { value: 0 }, { value: 0 }, { value: 0 }, { value: 0 }, { value: w.estado }
+          ]);
+        } else {
+          orders.forEach(o => {
+            const f = state.franquicias.find(f => f.alias === o.franquiciaAlias);
+            const regPct = f ? f.regalia : 0;
+            const regMonto = o.subtotal * (regPct / 100);
+            rows.push([
+              { value: w.semana }, { value: `${formatDateShort(w.fechaInicio)} – ${formatDateShort(w.fechaFin)}` },
+              { value: o.franquiciaAlias }, { value: o.docenas }, { value: o.precioDocena, isCurrency: true },
+              { value: o.subtotal, isCurrency: true }, { value: regPct }, { value: regMonto, isCurrency: true }, { value: w.estado }
+            ]);
+          });
+        }
+      });
+
+      exportXmlTable(headers, rows, `${MESES[calMonth]} ${calYear}`, `emapro-${MESES[calMonth].toLowerCase()}-${calYear}.xls`);
+      showToast(`Excel de ${MESES[calMonth]} descargado ✓`);
     }
 
     function renderSVGChart() {
