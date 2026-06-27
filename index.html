@@ -494,25 +494,28 @@
 
     /* ======================== CALENDAR ======================== */
     .cal-cell {
-      min-height: 72px; padding: 6px; border-right: 1px solid var(--border);
+      min-height: 80px; padding: 6px 4px; border-right: 1px solid var(--border);
       border-bottom: 1px solid var(--border); position: relative;
       transition: background var(--transition);
     }
     .cal-cell:nth-child(7n) { border-right: none; }
-    .cal-cell.other-month { opacity: .35; pointer-events: none; }
+    .cal-cell.other-month { opacity: .3; pointer-events: none; }
     .cal-cell.today-cell .cal-day-num { background: var(--accent); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
     .cal-day-num { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
     .cal-week-chip {
-      border-radius: 6px; padding: 3px 5px; font-size: 9px; font-weight: 700;
-      cursor: pointer; line-height: 1.3; transition: opacity var(--transition);
-      border: 1px solid transparent;
+      width: 100%; display: block; padding: 4px 3px; font-size: 9px; font-weight: 700;
+      cursor: pointer; line-height: 1.3; transition: opacity var(--transition), filter var(--transition);
+      border: none; text-align: center; margin: 0; border-radius: 0;
     }
-    .cal-week-chip:hover { opacity: .8; }
-    .cal-week-chip.chip-open { background: var(--accent-dim); border-color: var(--accent); color: var(--accent-light); }
-    .cal-week-chip.chip-closed { background: var(--green-dim); border-color: var(--green); color: var(--green); }
-    .cal-week-chip.chip-lunes { border-radius: 6px 0 0 6px; }
-    .cal-week-chip.chip-mid { border-radius: 0; border-left: none; }
-    .cal-week-chip.chip-domingo { border-radius: 0 6px 6px 0; border-left: none; }
+    .cal-week-chip:hover { opacity: .85; filter: brightness(1.15); }
+    .cal-week-chip.chip-open { background: rgba(99,102,241,0.25); color: var(--accent-light); border-top: 2px solid var(--accent); border-bottom: 2px solid var(--accent); }
+    .cal-week-chip.chip-closed { background: rgba(16,185,129,0.2); color: var(--green); border-top: 2px solid var(--green); border-bottom: 2px solid var(--green); }
+    .cal-week-chip.chip-lunes { border-radius: 6px 0 0 6px; border-left: 2px solid; margin-left: -4px; padding-left: 5px; }
+    .cal-week-chip.chip-lunes.chip-open { border-left-color: var(--accent); }
+    .cal-week-chip.chip-lunes.chip-closed { border-left-color: var(--green); }
+    .cal-week-chip.chip-domingo { border-radius: 0 6px 6px 0; border-right: 2px solid; margin-right: -4px; padding-right: 5px; }
+    .cal-week-chip.chip-domingo.chip-open { border-right-color: var(--accent); }
+    .cal-week-chip.chip-domingo.chip-closed { border-right-color: var(--green); }
 
     /* ======================== CONFIG ======================== */
     .config-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
@@ -1473,13 +1476,13 @@
           deudaTotal: Number(row.deuda_total),
           pagado: Number(row.pagado),
           observaciones: row.observaciones,
-          fechaAlta: row.fecha_alta ? row.fecha_alta.toString().slice(0, 10) : ''
+          fechaAlta: row.fecha_alta ? (row.fecha_alta instanceof Date ? row.fecha_alta.toISOString().slice(0,10) : String(row.fecha_alta).slice(0,10)) : ''
         }));
 
         state.semanas = semRes.map(row => ({
           semana: row.semana,
-          fechaInicio: row.fecha_inicio ? row.fecha_inicio.toString().slice(0, 10) : '',
-          fechaFin: row.fecha_fin ? row.fecha_fin.toString().slice(0, 10) : '',
+          fechaInicio: row.fecha_inicio ? (row.fecha_inicio instanceof Date ? row.fecha_inicio.toISOString().slice(0,10) : String(row.fecha_inicio).slice(0,10)) : '',
+          fechaFin:    row.fecha_fin    ? (row.fecha_fin    instanceof Date ? row.fecha_fin.toISOString().slice(0,10)    : String(row.fecha_fin).slice(0,10))    : '',
           totalFacturado: Number(row.total_facturado),
           estado: row.estado
         }));
@@ -1497,7 +1500,7 @@
         state.cierres = cieRes.map(row => ({
           id: row.id,
           semana: row.semana,
-          fechaCierre: row.fecha_cierre ? row.fecha_cierre.toString().slice(0, 10) : '',
+          fechaCierre: row.fecha_cierre ? (row.fecha_cierre instanceof Date ? row.fecha_cierre.toISOString().slice(0,10) : String(row.fecha_cierre).slice(0,10)) : '',
           franquiciaAlias: row.franquicia_alias,
           docenas: Number(row.docenas),
           totalFacturado: Number(row.total_facturado),
@@ -1508,7 +1511,7 @@
 
         state.movimientos = movRes.map(row => ({
           id: row.id,
-          fecha: row.fecha ? row.fecha.toString().slice(0, 10) : '',
+          fecha: row.fecha ? (row.fecha instanceof Date ? row.fecha.toISOString().slice(0,10) : String(row.fecha).slice(0,10)) : '',
           franquiciaAlias: row.franquicia_alias,
           tipo: row.tipo,
           monto: Number(row.monto),
@@ -2368,10 +2371,13 @@
           else posClass = 'chip-mid';
           chip.className = `cal-week-chip ${isClosed ? 'chip-closed' : 'chip-open'} ${posClass}`;
 
-          // Solo en lunes y domingo mostrar texto, en el medio vacío para efecto de barra
-          if (colInWeek === 0) chip.textContent = isClosed ? '✓ Cerrada' : '● Abierta';
-          else if (colInWeek === 6) chip.textContent = 'cierre';
-          else chip.innerHTML = '&nbsp;';
+          if (colInWeek === 0) {
+            chip.textContent = isClosed ? '✓ Cerrada' : '● Abierta';
+          } else if (colInWeek === 6) {
+            chip.textContent = 'ver →';
+          } else {
+            chip.innerHTML = '&nbsp;';
+          }
 
           chip.onclick = () => openDetalleSemana(week.semana);
           cell.appendChild(chip);
