@@ -964,14 +964,23 @@
             </div>
           </div>
 
-          <!-- Banner sugerencia de cierre — reemplaza el auto-cierre que cerraba la semana solo -->
-          <div id="sdSugerenciaCierre" style="display:none;margin-top:16px;background:rgba(99,102,241,.12);border:1px solid var(--accent);border-radius:var(--radius);padding:14px 16px;align-items:center;gap:12px;flex-wrap:wrap">
-            <div style="font-size:20px">🎉</div>
+          <!-- Banner semana completa -->
+          <div id="sdSugerenciaCierre" style="display:none;margin-top:16px;background:rgba(16,185,129,.10);border:1px solid var(--green);border-radius:var(--radius);padding:12px 16px;align-items:center;gap:10px;flex-wrap:wrap">
+            <div style="font-size:18px">🎉</div>
             <div style="flex:1;min-width:160px">
-              <div style="font-size:13px;font-weight:800;color:var(--text)">¡Semana completa!</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px">Todos los días tienen pedidos. Podés calcular el cierre cuando estés listo.</div>
+              <div style="font-size:12px;font-weight:800;color:var(--green)">¡Semana completa! Todos los días tienen pedidos.</div>
             </div>
-            <button class="btn btn-sm" onclick="calcularCierreDesdeBanner()" style="white-space:nowrap">📊 Calcular Cierre</button>
+          </div>
+
+          <!-- Botón cierre de semana — siempre visible -->
+          <div id="sdBtnCierreWrap" style="margin-top:20px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:none">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:700">Cierre semanal</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;line-height:1.5">
+              Revisá el detalle completo de la semana y confirmá el cierre para registrar las regalías a cobrar a cada sucursal.
+            </div>
+            <button class="btn" style="width:100%;justify-content:center;padding:14px;font-size:14px" onclick="abrirModalResumenCierre()">
+              📊 Ver resumen y cerrar semana
+            </button>
           </div>
         </div>
 
@@ -1425,6 +1434,54 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal('modalEditPedidoDia')">Cancelar</button>
         <button class="btn" onclick="confirmarEditPedidoDia()">💾 Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Resumen Completo de Cierre -->
+  <div class="modal-overlay" id="modalResumenCierre">
+    <div class="modal" style="max-width:680px;max-height:90vh">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">📊 Resumen de Cierre Semanal</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px" id="resumenCierrePeriodo"></div>
+        </div>
+        <button class="btn-close" onclick="closeModal('modalResumenCierre')">×</button>
+      </div>
+
+      <!-- Totales generales arriba -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px" id="resumenCierreTotalesGrid"></div>
+
+      <!-- Días con sus pedidos -->
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Detalle por día</div>
+      <div id="resumenCierreDias" style="margin-bottom:18px"></div>
+
+      <!-- Totales por sucursal -->
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Totales por sucursal</div>
+      <div class="table-wrap" style="margin-bottom:18px">
+        <table class="mov-table">
+          <thead>
+            <tr>
+              <th>Sucursal</th>
+              <th>Días</th>
+              <th>Docenas</th>
+              <th>Facturado</th>
+              <th>% Regalía</th>
+              <th>Regalía a cobrar</th>
+            </tr>
+          </thead>
+          <tbody id="resumenCierreSucursalesBody"></tbody>
+          <tfoot id="resumenCierreSucursalesFoot"></tfoot>
+        </table>
+      </div>
+
+      <!-- Botones -->
+      <div style="display:flex;gap:10px" id="resumenCierreAcciones">
+        <button class="btn btn-secondary" onclick="closeModal('modalResumenCierre')" style="flex:1;justify-content:center">Cancelar</button>
+        <button class="btn" onclick="confirmarCierreDesdeModal()" style="flex:2;justify-content:center;padding:14px;font-size:14px" id="btnConfirmarCierreModal">✅ Confirmar y registrar deudas</button>
+      </div>
+      <div id="resumenCierreYaCerrada" style="display:none;background:var(--green-dim);border:1px solid var(--green);border-radius:var(--radius-sm);padding:12px 14px;font-size:13px;font-weight:700;color:var(--green);text-align:center">
+        ✅ Esta semana ya fue cerrada
       </div>
     </div>
   </div>
@@ -3596,15 +3653,44 @@
       const sdFac = document.getElementById('sdTotalFac'); if (sdFac) sdFac.textContent = fmt(totalFac);
       const sdReg = document.getElementById('sdTotalReg'); if (sdReg) sdReg.textContent = fmt(totalReg);
 
-      // Sugerencia de cierre si 6 días completos y semana abierta
-      // BUG CORREGIDO: antes disparaba el cierre automáticamente sin confirmación,
-      // cerrando la semana al cargar el último día aunque el usuario no lo pidiera.
-      // Ahora solo muestra un banner de sugerencia — el cierre sigue siendo manual.
+      // Banner semana completa + botón de cierre
       const bannerEl = document.getElementById('sdSugerenciaCierre');
-      if (diasConPedido === 6 && w && w.estado !== 'cerrada') {
+      const btnCierreEl = document.getElementById('sdBtnCierreWrap');
+      const isCerradaFinal = w && w.estado === 'cerrada';
+
+      if (diasConPedido === 6 && !isCerradaFinal) {
         if (bannerEl) bannerEl.style.display = 'flex';
       } else {
         if (bannerEl) bannerEl.style.display = 'none';
+      }
+
+      // Mostrar botón de cierre siempre que haya al menos 1 pedido y semana no cerrada
+      // (si ya está cerrada, el botón cambia a "Ver resumen")
+      if (btnCierreEl) {
+        const hayPedidos = getPedidosDiarios().filter(p => p.semana === currentSemanaKey).length > 0;
+        if (hayPedidos) {
+          btnCierreEl.style.display = 'block';
+          if (isCerradaFinal) {
+            btnCierreEl.innerHTML = `
+              <div style="font-size:11px;color:var(--green);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;font-weight:700">✅ Semana cerrada</div>
+              <button class="btn btn-secondary" style="width:100%;justify-content:center;padding:12px;font-size:13px" onclick="abrirModalResumenCierre()">
+                📋 Ver resumen completo
+              </button>
+            `;
+          } else {
+            btnCierreEl.innerHTML = `
+              <div style="font-size:11px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:700">Cierre semanal</div>
+              <div style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;line-height:1.5">
+                Revisá el detalle completo de la semana y confirmá el cierre para registrar las regalías a cobrar a cada sucursal.
+              </div>
+              <button class="btn" style="width:100%;justify-content:center;padding:14px;font-size:14px" onclick="abrirModalResumenCierre()">
+                📊 Ver resumen y cerrar semana
+              </button>
+            `;
+          }
+        } else {
+          btnCierreEl.style.display = 'none';
+        }
       }
     }
 
@@ -3893,6 +3979,241 @@
           `Período: Lun ${formatDateShort(week.fechaInicio)} – Dom ${formatDateShort(week.fechaFin)}`;
       }
       calcularCierreSemana();
+    }
+
+    // ══════════════════════════════════════════
+    // MODAL RESUMEN COMPLETO DE CIERRE
+    // ══════════════════════════════════════════
+
+    let cierreModalData = []; // lista de items para el cierre, calculada al abrir el modal
+
+    function abrirModalResumenCierre() {
+      if (!currentSemanaKey) return;
+      const w = state.semanas.find(s => s.semana === currentSemanaKey);
+      if (!w) return;
+
+      const isCerrada = w.estado === 'cerrada';
+
+      // Período
+      document.getElementById('resumenCierrePeriodo').textContent =
+        `Semana del ${fmtDate(w.fechaInicio)} al ${fmtDate(w.fechaFin)}`;
+
+      // Todos los pedidos diarios de la semana
+      const pds = getPedidosDiarios().filter(p => p.semana === currentSemanaKey);
+      const dias = getDiasPedido(currentSemanaKey);
+
+      // ── 1. Totales generales ──
+      const totalDocenas = pds.reduce((a, p) => a + p.totalDocenas, 0);
+      const totalFacturado = pds.reduce((a, p) => a + p.subtotal, 0);
+      let totalRegalias = 0;
+      pds.forEach(p => {
+        const f = state.franquicias.find(f => f.alias === p.franquiciaAlias);
+        if (f) totalRegalias += p.subtotal * (f.regalia / 100);
+      });
+      const diasConPedido = new Set(pds.map(p => p.fecha)).size;
+
+      document.getElementById('resumenCierreTotalesGrid').innerHTML = `
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;text-align:center">
+          <div style="font-size:20px;font-weight:800;font-family:'Space Mono',monospace;color:var(--accent-light)">${totalDocenas.toFixed(0)}</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px">Docenas totales</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;text-align:center">
+          <div style="font-size:20px;font-weight:800;font-family:'Space Mono',monospace;color:var(--green)">${fmt(totalFacturado)}</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px">Total facturado</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;text-align:center">
+          <div style="font-size:20px;font-weight:800;font-family:'Space Mono',monospace;color:var(--yellow)">${fmt(totalRegalias)}</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px">Regalías a cobrar</div>
+        </div>
+      `;
+
+      // ── 2. Días con sus pedidos ──
+      const diasHtml = dias.map(d => {
+        const dPeds = pds.filter(p => p.fecha === d.fecha);
+        const docDia = dPeds.reduce((a, p) => a + p.totalDocenas, 0);
+        const facDia = dPeds.reduce((a, p) => a + p.subtotal, 0);
+        let regDia = 0;
+        dPeds.forEach(p => {
+          const f = state.franquicias.find(f => f.alias === p.franquiciaAlias);
+          if (f) regDia += p.subtotal * (f.regalia / 100);
+        });
+        const fechaObj = new Date(d.fecha + 'T12:00:00');
+        const diaNumero = fechaObj.getDate() + '/' + (fechaObj.getMonth() + 1);
+        const hayPedidos = dPeds.length > 0;
+
+        return `
+          <div style="background:var(--bg);border:1px solid ${hayPedidos ? 'var(--border)' : 'var(--border)'};border-radius:var(--radius-sm);margin-bottom:8px;overflow:hidden">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface2);cursor:pointer"
+                 onclick="toggleDiaCierreDetalle('dcd_${d.fecha}')">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-size:12px;font-weight:800;color:${hayPedidos ? 'var(--text)' : 'var(--muted)'}">${d.nombre} ${diaNumero}</span>
+                ${hayPedidos
+                  ? `<span style="font-size:10px;color:var(--muted)">${dPeds.length} pedido${dPeds.length !== 1 ? 's' : ''} · ${docDia.toFixed(0)} doc</span>`
+                  : `<span style="font-size:10px;color:var(--muted)">Sin pedidos</span>`}
+              </div>
+              ${hayPedidos ? `
+                <div style="display:flex;gap:12px;align-items:center">
+                  <span style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--green)">${fmt(facDia)}</span>
+                  <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--yellow)">${fmt(regDia)}</span>
+                  <span style="font-size:12px;color:var(--muted)">▾</span>
+                </div>
+              ` : ''}
+            </div>
+            ${hayPedidos ? `
+              <div id="dcd_${d.fecha}" style="display:none;padding:10px 14px;border-top:1px solid var(--border)">
+                ${dPeds.map(p => {
+                  const f = state.franquicias.find(f => f.alias === p.franquiciaAlias);
+                  const reg = f ? p.subtotal * (f.regalia / 100) : 0;
+                  return `
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border)">
+                      <div>
+                        <div style="font-size:13px;font-weight:700">${esc(p.franquiciaAlias)}</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+                          ${(p.items || []).map(it =>
+                            `<span style="font-size:10px;background:var(--surface3);border-radius:4px;padding:2px 7px;font-family:'Space Mono',monospace">${esc(it.nombre)}: ${it.docenas}doc</span>`
+                          ).join('')}
+                        </div>
+                        <div style="font-size:10px;color:var(--muted);margin-top:4px">Regalía ${f ? f.regalia : 0}%: <span style="color:var(--yellow);font-family:'Space Mono',monospace">${fmt(reg)}</span></div>
+                      </div>
+                      <div style="font-family:'Space Mono',monospace;font-size:14px;font-weight:800;color:var(--green);white-space:nowrap;margin-left:12px">${fmt(p.subtotal)}</div>
+                    </div>
+                  `;
+                }).join('')}
+                <div style="display:flex;justify-content:flex-end;gap:16px;padding-top:8px;font-size:11px">
+                  <span style="color:var(--muted)">Total día: <strong style="color:var(--text);font-family:'Space Mono',monospace">${fmt(facDia)}</strong></span>
+                  <span style="color:var(--muted)">Regalías: <strong style="color:var(--yellow);font-family:'Space Mono',monospace">${fmt(regDia)}</strong></span>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+      document.getElementById('resumenCierreDias').innerHTML = diasHtml;
+
+      // ── 3. Totales por sucursal ──
+      const bySucursal = {};
+      pds.forEach(p => {
+        if (!bySucursal[p.franquiciaAlias]) {
+          bySucursal[p.franquiciaAlias] = { doc: 0, fac: 0, dias: new Set() };
+        }
+        bySucursal[p.franquiciaAlias].doc += p.totalDocenas;
+        bySucursal[p.franquiciaAlias].fac += p.subtotal;
+        bySucursal[p.franquiciaAlias].dias.add(p.fecha);
+      });
+
+      // Preparar cierreModalData para confirmar
+      cierreModalData = Object.entries(bySucursal).map(([alias, datos]) => {
+        const f = state.franquicias.find(f => f.alias === alias);
+        const regPct = f ? f.regalia : 0;
+        const montoCobrar = datos.fac * (regPct / 100);
+        return {
+          franquiciaAlias: alias,
+          docenas: datos.doc,
+          subtotal: datos.fac,
+          regalia: regPct,
+          montoCobrar,
+          precioDocena: datos.doc > 0 ? datos.fac / datos.doc : 0
+        };
+      });
+
+      const tbody = document.getElementById('resumenCierreSucursalesBody');
+      tbody.innerHTML = cierreModalData.map((item, i) => `
+        <tr style="${i % 2 === 1 ? 'background:var(--surface2)' : ''}">
+          <td style="font-weight:700">${esc(item.franquiciaAlias)}</td>
+          <td>${bySucursal[item.franquiciaAlias].dias.size}</td>
+          <td style="font-family:'Space Mono',monospace">${item.docenas.toFixed(1)}</td>
+          <td style="font-family:'Space Mono',monospace">${fmt(item.subtotal)}</td>
+          <td>${item.regalia}%</td>
+          <td style="font-family:'Space Mono',monospace;color:var(--yellow);font-weight:700">${fmt(item.montoCobrar)}</td>
+        </tr>
+      `).join('');
+
+      // Fila de totales en el footer
+      const totalReg2 = cierreModalData.reduce((a, x) => a + x.montoCobrar, 0);
+      const totalFac2 = cierreModalData.reduce((a, x) => a + x.subtotal, 0);
+      const totalDoc2 = cierreModalData.reduce((a, x) => a + x.docenas, 0);
+      document.getElementById('resumenCierreSucursalesFoot').innerHTML = `
+        <tr style="background:var(--surface3);font-weight:800">
+          <td>TOTAL</td>
+          <td>${diasConPedido}</td>
+          <td style="font-family:'Space Mono',monospace">${totalDoc2.toFixed(1)}</td>
+          <td style="font-family:'Space Mono',monospace;color:var(--green)">${fmt(totalFac2)}</td>
+          <td>—</td>
+          <td style="font-family:'Space Mono',monospace;color:var(--yellow)">${fmt(totalReg2)}</td>
+        </tr>
+      `;
+
+      // ── Mostrar u ocultar botón según estado ──
+      document.getElementById('resumenCierreAcciones').style.display = isCerrada ? 'none' : 'flex';
+      document.getElementById('resumenCierreYaCerrada').style.display = isCerrada ? 'block' : 'none';
+
+      document.getElementById('modalResumenCierre').classList.add('open');
+    }
+
+    function toggleDiaCierreDetalle(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function confirmarCierreDesdeModal() {
+      if (cierreModalData.length === 0) { showToast('No hay pedidos para cerrar', 'error'); return; }
+      if (!confirm('¿Confirmar el cierre semanal? Se registrarán las regalías como deuda en cada sucursal y la semana quedará bloqueada.')) return;
+
+      const w = state.semanas.find(s => s.semana === currentSemanaKey);
+      if (!w) return;
+      const fechaCierre = todayISO();
+
+      // Actualizar selectedSemanaIndex para compatibilidad con confirmarCierreSemana
+      selectedSemanaIndex = state.semanas.findIndex(s => s.semana === currentSemanaKey);
+
+      // Poblar closingTempList con los datos calculados
+      closingTempList = cierreModalData.map(item => ({ ...item }));
+
+      // Generar IDs y ejecutar cierre
+      closingTempList.forEach(item => {
+        const id = genId();
+        const movId = genId();
+        item.cierreId = id;
+        item.movId = movId;
+
+        state.cierres.push({
+          id, semana: w.semana, fechaCierre,
+          franquiciaAlias: item.franquiciaAlias,
+          docenas: item.docenas,
+          totalFacturado: item.subtotal,
+          regalia: item.regalia,
+          montoCobrar: item.montoCobrar,
+          estado: 'pendiente'
+        });
+
+        const fran = state.franquicias.find(f => f.alias === item.franquiciaAlias);
+        if (fran) fran.deudaTotal += item.montoCobrar;
+
+        state.movimientos.push({
+          id: movId, fecha: fechaCierre,
+          franquiciaAlias: item.franquiciaAlias,
+          tipo: 'cierre',
+          monto: item.montoCobrar,
+          pendiente: fran ? (fran.deudaTotal - fran.pagado) : item.montoCobrar,
+          observaciones: `Cierre semanal (${item.docenas.toFixed(1)} docenas, Regalía ${item.regalia}%)`
+        });
+      });
+
+      w.estado = 'cerrada';
+      // Marcar pedidos diarios como cerrados
+      if (state.pedidosDiarios) {
+        state.pedidosDiarios.forEach(p => { if (p.semana === w.semana) p.cerrado = true; });
+      }
+      state.pedidos.forEach(p => { if (p.semana === w.semana) p.cerrado = true; });
+
+      queueAction('close_semana', { semana: w.semana, fechaCierre, closures: closingTempList });
+      saveDataLocal();
+
+      closeModal('modalResumenCierre');
+      showToast('✅ Cierre confirmado y deudas registradas', 'success');
+      renderSemanasList();
+      openSemanaDiaria(w.semana);
     }
 
     // ── Editar pedido diario ──
