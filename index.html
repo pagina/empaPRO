@@ -1125,8 +1125,7 @@
         <button class="btn btn-sm" id="detBtnCierre" onclick="detModalCalcularCierre()" style="flex:1;justify-content:center">📊 Calcular Cierre</button>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
-        <button class="btn btn-secondary btn-sm" onclick="detModalAbrirPedidosSheet()" style="flex:1;justify-content:center">📋 Ver Pedidos en Sheets</button>
-        <button class="btn btn-secondary btn-sm" onclick="detModalAbrirCierresSheet()" style="flex:1;justify-content:center">📊 Ver Cierres en Sheets</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportCierreToGoogleSheets(detalleSemanaKey)" style="flex:1;justify-content:center">📤 Exportar a Google Sheets</button>
         <button class="btn btn-secondary btn-sm" onclick="detModalExportarExcel()" style="flex:1;justify-content:center">📥 Exportar .xls</button>
       </div>
     </div>
@@ -1825,10 +1824,20 @@
 
     // ===================== CONFIGURACIÓN =====================
     function saveAppConfig() {
-      const fields = ['cfgSheetUrl','cfgSheetToken','cfgSheetSpreadsheetUrl','cfgNeonConn','cfgR2AccId','cfgR2Key','cfgR2Secret','cfgR2Bucket','cfgR2Domain'];
-      const keys = ['empapro_cfg_sheet_url','empapro_cfg_sheet_token','empapro_cfg_neon_conn','empapro_cfg_r2_acc_id','empapro_cfg_r2_key','empapro_cfg_r2_secret','empapro_cfg_r2_bucket','empapro_cfg_r2_domain'];
-      fields.forEach((id, i) => {
-        localStorage.setItem(keys[i], document.getElementById(id).value.trim());
+      const map = {
+        'cfgSheetUrl':            'empapro_cfg_sheet_url',
+        'cfgSheetToken':          'empapro_cfg_sheet_token',
+        'cfgSheetSpreadsheetUrl': 'empapro_cfg_sheet_spreadsheet_url',
+        'cfgNeonConn':            'empapro_cfg_neon_conn',
+        'cfgR2AccId':             'empapro_cfg_r2_acc_id',
+        'cfgR2Key':               'empapro_cfg_r2_key',
+        'cfgR2Secret':            'empapro_cfg_r2_secret',
+        'cfgR2Bucket':            'empapro_cfg_r2_bucket',
+        'cfgR2Domain':            'empapro_cfg_r2_domain'
+      };
+      Object.entries(map).forEach(([fieldId, storageKey]) => {
+        const el = document.getElementById(fieldId);
+        if (el) localStorage.setItem(storageKey, el.value.trim());
       });
       connectToNeon();
       showToast('Configuraciones guardadas ✓');
@@ -2487,38 +2496,11 @@
       exportClosingExcel();
     }
 
-    function getSheetBaseUrl() {
-      // La URL del Apps Script la tenemos, pero necesitamos la URL de la planilla
-      // que el usuario configuró. La guardamos aparte o extraemos del script URL.
-      // Usamos la URL hardcodeada del sheet conocido del cliente.
-      const stored = localStorage.getItem('empapro_cfg_sheet_spreadsheet_url') || '';
-      if (stored) return stored;
-      // Fallback: intentar derivar desde script url (no siempre funciona)
-      return '';
-    }
-
-    function abrirSheetEnHoja(nombreHoja) {
+    function abrirPlanillaSheets() {
       const url = localStorage.getItem('empapro_cfg_sheet_spreadsheet_url') || '';
-      if (!url) {
-        showToast('Pegá la URL de tu planilla en Ajustes → URL de la Planilla', 'error');
-        return;
-      }
-      // Armar link directo a la planilla — el navegador abrirá la hoja por nombre si se agrega #gid
-      // Como no tenemos el gid, abrimos la planilla y el usuario la ve completa
+      if (!url) { showToast('Pegá la URL de tu planilla en Ajustes', 'error'); return; }
       const match = url.match(/\/d\/([\w-]+)/);
-      if (match) {
-        window.open(`https://docs.google.com/spreadsheets/d/${match[1]}/edit`, '_blank');
-      } else {
-        window.open(url, '_blank');
-      }
-    }
-
-    function detModalAbrirPedidosSheet() {
-      abrirSheetEnHoja('Pedidos');
-    }
-
-    function detModalAbrirCierresSheet() {
-      abrirSheetEnHoja('Cierres');
+      window.open(match ? `https://docs.google.com/spreadsheets/d/${match[1]}/edit` : url, '_blank');
     }
 
     function navigateWeek(dir) { /* kept for compatibility */ }
@@ -3028,13 +3010,76 @@
       const week = state.semanas[selectedSemanaIndex];
       if (!week) return;
       const headers = ['Franquicia', 'Docenas', 'Total Facturado', '% Regalía', 'Monto a Cobrar', 'Estado'];
-      const rows = closingTempList.map(item => [
+      // Usar cierres confirmados si existen, sino closingTempList (preview)
+      const cierresSem = (state.cierres || []).filter(c => c.semana === week.semana);
+      const source = cierresSem.length > 0 ? cierresSem.map(c => ({
+        franquiciaAlias: c.franquiciaAlias, docenas: c.docenas,
+        subtotal: c.totalFacturado, regalia: c.regalia,
+        montoCobrar: c.montoCobrar, estado: c.estado
+      })) : closingTempList.map(c => ({ ...c, estado: 'Pendiente' }));
+      if (source.length === 0) { showToast('No hay datos de cierre para exportar', 'error'); return; }
+      const rows = source.map(item => [
         { value: item.franquiciaAlias }, { value: item.docenas },
         { value: item.subtotal, isCurrency: true }, { value: item.regalia },
-        { value: item.montoCobrar, isCurrency: true }, { value: 'Pendiente' }
+        { value: item.montoCobrar, isCurrency: true }, { value: item.estado || 'Pendiente' }
       ]);
       exportXmlTable(headers, rows, 'Cierre Semanal', `emapro-cierre-semana-${week.semana}.xls`);
-      showToast('Excel descargado con estilos ✓');
+      showToast('Excel descargado ✓');
+    }
+
+    async function exportCierreToGoogleSheets(semanaKey) {
+      const sheetUrl = localStorage.getItem('empapro_cfg_sheet_url') || '';
+      const sheetToken = localStorage.getItem('empapro_cfg_sheet_token') || '';
+      if (!sheetUrl) { showToast('Configurá la URL del Apps Script en Ajustes', 'error'); return; }
+
+      const week = state.semanas.find(w => w.semana === semanaKey);
+      if (!week) return;
+
+      // Si la semana ya está cerrada y tiene cierres, están ya en Sheets via close_semana
+      const cierresSem = (state.cierres || []).filter(c => c.semana === semanaKey);
+      if (week.estado === 'cerrada' && cierresSem.length > 0) {
+        // Ya están en Sheets — solo abrimos la planilla
+        const spreadsheetUrl = localStorage.getItem('empapro_cfg_sheet_spreadsheet_url') || '';
+        if (spreadsheetUrl) {
+          const match = spreadsheetUrl.match(/\/d\/([\w-]+)/);
+          if (match) { window.open('https://docs.google.com/spreadsheets/d/' + match[1] + '/edit', '_blank'); }
+          else { window.open(spreadsheetUrl, '_blank'); }
+          showToast('Los datos ya están en Google Sheets ✓');
+        } else {
+          showToast('Semana ya sincronizada. Configurá la URL de la planilla en Ajustes para abrirla.', 'error');
+        }
+        return;
+      }
+
+      // Semana abierta con pedidos — exportar pedidos al sheet manualmente
+      const orders = state.pedidos.filter(p => p.semana === semanaKey);
+      if (orders.length === 0) { showToast('No hay pedidos en esta semana', 'error'); return; }
+
+      showToast('Exportando a Google Sheets...');
+      let ok = 0, fail = 0;
+      for (const o of orders) {
+        try {
+          await executeSheetAction(sheetUrl, sheetToken, 'add_pedido', {
+            id: o.id, semana: o.semana, fechaInicio: week.fechaInicio,
+            fechaFin: week.fechaFin, franquiciaAlias: o.franquiciaAlias,
+            docenas: o.docenas, precioDocena: o.precioDocena,
+            subtotal: o.subtotal, cerrado: o.cerrado || false
+          });
+          ok++;
+        } catch(e) { fail++; }
+      }
+      if (fail === 0) {
+        showToast('Pedidos exportados a Google Sheets ✓', 'success');
+        const spreadsheetUrl = localStorage.getItem('empapro_cfg_sheet_spreadsheet_url') || '';
+        if (spreadsheetUrl) {
+          const match = spreadsheetUrl.match(/\/d\/([\w-]+)/);
+          setTimeout(() => {
+            if (match) window.open('https://docs.google.com/spreadsheets/d/' + match[1] + '/edit', '_blank');
+          }, 800);
+        }
+      } else {
+        showToast(`Exportado con ${fail} errores. Verificá la conexión.`, 'error');
+      }
     }
 
     function exportMovementsExcel() {
