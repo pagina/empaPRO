@@ -1,0 +1,2932 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0b10">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="EmpaPRO — Sistema profesional de gestión de pedidos y cobros de franquicias">
+  <title>EmpaPRO – Gestión de Franquicias</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="app_icon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  
+  <!-- SheetJS para exportación a Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- FIX CRÍTICO: Detectar apertura desde file:// y mostrar instrucciones -->
+  <script>
+    (function() {
+      // Si se abre con file:// los redirects OAuth de Clerk van a C:\ - hay que usar un servidor
+      if (window.location.protocol === 'file:') {
+        document.addEventListener('DOMContentLoaded', function() {
+          document.body.innerHTML = `
+            <div style="font-family:Inter,sans-serif;background:#0a0b10;color:#eaecf5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;">
+              <div style="max-width:480px">
+                <div style="font-size:48px;margin-bottom:16px">⚠️</div>
+                <h1 style="font-size:22px;font-weight:800;margin-bottom:12px;color:#f59e0b">EmpaPRO necesita un servidor local</h1>
+                <p style="color:#949bb2;font-size:14px;line-height:1.6;margin-bottom:20px">
+                  Estás abriendo el archivo directamente desde el disco (<code style="color:#818cf8">file://</code>).
+                  Eso hace que el login de Clerk redirija al directorio <strong>C:\\</strong> en lugar de volver a la app.
+                </p>
+                <div style="background:#141722;border:1px solid #2a2f42;border-radius:12px;padding:20px;text-align:left;margin-bottom:20px">
+                  <p style="font-size:12px;font-weight:700;color:#6366f1;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">Cómo solucionarlo (elige una opción):</p>
+                  <p style="font-size:13px;color:#eaecf5;margin-bottom:8px"><strong>Opción 1 — Python (recomendado):</strong></p>
+                  <code style="display:block;background:#0a0b10;padding:10px 12px;border-radius:8px;font-size:12px;color:#10b981;margin-bottom:12px">
+                    cd "CARPETA_DEL_PROYECTO"<br>
+                    python -m http.server 8080
+                  </code>
+                  <p style="font-size:13px;color:#eaecf5;margin-bottom:8px"><strong>Opción 2 — Node.js (npx):</strong></p>
+                  <code style="display:block;background:#0a0b10;padding:10px 12px;border-radius:8px;font-size:12px;color:#10b981;margin-bottom:12px">
+                    npx serve .
+                  </code>
+                  <p style="font-size:13px;color:#eaecf5;margin-bottom:8px"><strong>Opción 3 — VS Code:</strong></p>
+                  <p style="font-size:12px;color:#949bb2">Instalá la extensión <em>"Live Server"</em> y hacé clic derecho → Open with Live Server</p>
+                </div>
+                <p style="font-size:12px;color:#5e6580">
+                  Luego abrí: <code style="color:#818cf8">http://localhost:8080</code> en el navegador
+                </p>
+              </div>
+            </div>`;
+        });
+        // Detener la carga del resto del script
+        throw new Error('EmpaPRO: file:// protocol detected. Use a local server.');
+      }
+    })();
+  </script>
+
+  <!-- BUG #1 CORREGIDO: Clerk SDK cargado SIN async para garantizar disponibilidad antes del módulo ESM -->
+  <script crossorigin="anonymous" data-clerk-publishable-key="pk_test_YWxsb3dlZC1nb2JibGVyLTk1LmNsZXJrLmFjY291bnRzLmRldiQ" src="https://allowed-gobbler-95.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js" type="text/javascript"></script>
+
+  <style>
+    /* ======================== ROOT VARIABLES ======================== */
+    :root {
+      --bg: #0a0b10;
+      --bg-elevated: #0f1119;
+      --surface: #141722;
+      --surface2: #1c2030;
+      --surface3: #252a3a;
+      --border: #2a2f42;
+      --border-hover: #3d4460;
+      --text: #eaecf5;
+      --text-secondary: #949bb2;
+      --muted: #5e6580;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --accent-dim: rgba(99, 102, 241, 0.10);
+      --accent-glow: rgba(99, 102, 241, 0.20);
+      --green: #10b981;
+      --green-dim: rgba(16, 185, 129, 0.10);
+      --yellow: #f59e0b;
+      --yellow-dim: rgba(245, 158, 11, 0.10);
+      --red: #f43f5e;
+      --red-dim: rgba(244, 63, 94, 0.10);
+      --radius: 14px;
+      --radius-sm: 10px;
+      --radius-xs: 6px;
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.2);
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ======================== RESET & BASE ======================== */
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ======================== SCROLLBAR ======================== */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+
+    /* ======================== LOGIN SCREEN ======================== */
+    #loginScreen {
+      position: fixed; inset: 0; z-index: 1000;
+      background: #f7f4ed;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .login-box {
+      width: 100%; max-width: 420px;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 0;
+      box-shadow: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .login-logo { font-size: 32px; font-weight: 900; letter-spacing: -1px; margin-bottom: 6px; text-align: center; color: #1e293b; }
+    .login-logo span { color: var(--accent); }
+    .login-sub { color: #64748b; font-size: 13px; margin-bottom: 24px; text-align: center; font-weight: 500; }
+
+    /* ======================== APP SHELL ======================== */
+    #app { display: none; flex-direction: column; min-height: 100vh; }
+
+    header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 16px; display: flex; align-items: center; justify-content: space-between;
+      height: 56px; position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(12px); background: rgba(20, 23, 34, 0.85);
+    }
+    .logo { font-size: 20px; font-weight: 900; letter-spacing: -.5px; }
+    .logo span { color: var(--accent); }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .user-badge {
+      font-size: 11px; color: var(--text-secondary); background: var(--bg);
+      border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-weight: 500;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .user-avatar { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 9px; overflow: hidden; }
+    .btn-logout {
+      background: none; border: 1px solid var(--border); border-radius: var(--radius-xs);
+      color: var(--muted); font-family: inherit; font-size: 11px; font-weight: 600;
+      padding: 5px 10px; cursor: pointer; transition: color var(--transition);
+    }
+    .btn-logout:hover { color: var(--text); border-color: var(--border-hover); }
+
+    /* ======================== NAV TABS ======================== */
+    nav {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      display: flex; overflow-x: auto; scrollbar-width: none;
+    }
+    nav::-webkit-scrollbar { display: none; }
+    .nav-tab {
+      flex: 1; min-width: 65px; background: none; border: none;
+      color: var(--muted); font-family: inherit; font-size: 11px; font-weight: 600;
+      padding: 10px 4px; cursor: pointer; border-bottom: 2px solid transparent;
+      transition: color var(--transition), border-color var(--transition);
+      white-space: nowrap; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    }
+    .nav-tab svg { width: 18px; height: 18px; }
+    .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .nav-tab:hover { color: var(--text-secondary); }
+
+    /* ======================== MAIN CONTENT ======================== */
+    main { flex: 1; padding: 16px; max-width: 900px; margin: 0 auto; width: 100%; }
+    .section { display: none; animation: fadeIn .25s ease; }
+    .section.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ======================== DASHBOARD ======================== */
+    .dash-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+    .dash-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px; position: relative; overflow: hidden;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .dash-card:hover { border-color: var(--border-hover); box-shadow: var(--shadow-sm); }
+    .dash-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    }
+    .dash-card.c-red::before { background: linear-gradient(90deg, var(--red), #fb7185); }
+    .dash-card.c-green::before { background: linear-gradient(90deg, #34d399, var(--green)); }
+    .dash-card.c-yellow::before { background: linear-gradient(90deg, var(--yellow), #fbbf24); }
+    .dash-card.c-accent::before { background: linear-gradient(90deg, var(--accent), var(--accent-light)); }
+    .dash-card .dash-icon { font-size: 22px; margin-bottom: 8px; }
+    .dash-card .dash-val {
+      font-size: 20px; font-weight: 800; font-family: 'Space Mono', monospace; margin-bottom: 2px;
+    }
+    .dash-card .dash-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+
+    .dash-section { margin-bottom: 20px; }
+    .dash-section-title {
+      font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;
+      letter-spacing: .5px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .dash-status-chips { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .dash-status-chip {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+      padding: 6px 14px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px;
+    }
+
+    .dash-pago-item {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 12px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
+      cursor: pointer; transition: border-color var(--transition);
+    }
+    .dash-pago-item:hover { border-color: var(--border-hover); }
+    .dash-pago-left { display: flex; flex-direction: column; gap: 2px; }
+    .dash-pago-prov { font-size: 13px; font-weight: 700; }
+    .dash-pago-date { font-size: 11px; color: var(--muted); }
+    .dash-pago-monto { font-size: 14px; font-weight: 700; font-family: 'Space Mono', monospace; color: var(--green); }
+    .dash-pago-del { background: none; border: none; color: var(--muted); font-size: 14px; cursor: pointer; padding: 4px 6px; border-radius: var(--radius-xs); transition: color var(--transition), background var(--transition); margin-left: 8px; }
+    .dash-pago-del:hover { color: var(--red); background: var(--red-dim); }
+
+    .dash-urgent-item {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 12px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
+      cursor: pointer; transition: border-color var(--transition); border-left: 3px solid var(--red);
+    }
+    .dash-urgent-item:hover { border-color: var(--border-hover); }
+    .dash-urgent-left { display: flex; flex-direction: column; gap: 2px; }
+    .dash-urgent-alias { font-size: 13px; font-weight: 700; }
+    .dash-urgent-cat { font-size: 11px; color: var(--muted); }
+    .dash-urgent-pend { font-size: 14px; font-weight: 700; font-family: 'Space Mono', monospace; color: var(--red); }
+
+    /* ======================== SUMMARY GRID ======================== */
+    .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+    .summary-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 12px; text-align: center;
+    }
+    .summary-card .val { font-size: 16px; font-weight: 800; font-family: 'Space Mono', monospace; margin-bottom: 2px; }
+    .summary-card .lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+    .val-red { color: var(--red); }
+    .val-green { color: var(--green); }
+    .val-yellow { color: var(--yellow); }
+    .val-accent { color: var(--accent-light); }
+
+    /* ======================== TOOLBAR & SEARCH ======================== */
+    .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+    .search-wrap { flex: 1; min-width: 160px; position: relative; }
+    .search-wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); width: 15px; height: 15px; }
+    .search-input {
+      width: 100%; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 13px;
+      padding: 10px 12px 10px 34px; outline: none; transition: border-color var(--transition);
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .sort-select {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      color: var(--text-secondary); font-family: inherit; font-size: 12px; font-weight: 600;
+      padding: 9px 12px; outline: none; cursor: pointer; min-width: 130px;
+      transition: border-color var(--transition);
+    }
+    .sort-select:focus { border-color: var(--accent); }
+    .sort-select option { background: var(--surface); }
+
+    /* ======================== BUTTONS ======================== */
+    .btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      border: none; border-radius: var(--radius-sm); color: #fff; font-family: inherit;
+      font-size: 12px; font-weight: 700; padding: 9px 16px; cursor: pointer;
+      transition: opacity var(--transition), transform var(--transition);
+      white-space: nowrap; display: inline-flex; align-items: center; gap: 5px;
+      text-decoration: none;
+    }
+    .btn:hover { opacity: .9; }
+    .btn:active { transform: scale(.97); }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--border-hover); opacity: 1; }
+    .btn-danger { background: var(--red); }
+    .btn-sm { padding: 6px 10px; font-size: 11px; border-radius: var(--radius-xs); }
+    .btn-icon {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-xs);
+      color: var(--text-secondary); padding: 6px 8px; font-size: 13px; cursor: pointer;
+      transition: all var(--transition); display: inline-flex; align-items: center; justify-content: center;
+    }
+    .btn-icon:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ======================== FILTER CHIPS ======================== */
+    .filter-bar { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+    .filter-chip {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+      color: var(--muted); font-family: inherit; font-size: 11px; font-weight: 600;
+      padding: 5px 12px; cursor: pointer; transition: all var(--transition);
+    }
+    .filter-chip:hover { border-color: var(--border-hover); color: var(--text-secondary); }
+    .filter-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* ======================== FRANQUICIAS CARDS ======================== */
+    .prov-list { display: flex; flex-direction: column; gap: 10px; }
+    .prov-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px 16px; cursor: pointer; transition: all var(--transition);
+      position: relative; overflow: hidden;
+    }
+    .prov-card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+    }
+    .prov-card.estado-deuda::before { background: var(--red); }
+    .prov-card.estado-parcial::before { background: var(--yellow); }
+    .prov-card.estado-dia::before { background: var(--green); }
+    .prov-card:hover { border-color: var(--border-hover); box-shadow: var(--shadow-sm); }
+
+    .prov-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+    .prov-alias { font-size: 15px; font-weight: 800; }
+    .prov-nombre { font-size: 12px; color: var(--muted); }
+    .prov-badges { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+    .prov-badge {
+      font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px;
+      text-transform: uppercase; letter-spacing: .3px; white-space: nowrap;
+    }
+    .badge-deuda { background: var(--red-dim); color: var(--red); }
+    .badge-parcial { background: var(--yellow-dim); color: var(--yellow); }
+    .badge-dia { background: var(--green-dim); color: var(--green); }
+    .badge-urgente { background: var(--red-dim); color: var(--red); }
+    .badge-normal { background: var(--yellow-dim); color: var(--yellow); }
+    .badge-sinprisa { background: var(--green-dim); color: var(--green); }
+
+    /* BUG #7 CORREGIDO: clase pago-tipo-badge faltaba */
+    .pago-tipo-badge { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+    .tipo-total { background: var(--green-dim); color: var(--green); }
+    .tipo-parcial { background: var(--yellow-dim); color: var(--yellow); }
+
+    .prov-meta { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; align-items: center; }
+    .prov-phone-chip {
+      font-size: 10px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 3px;
+    }
+
+    .prov-amounts { display: flex; gap: 16px; flex-wrap: wrap; }
+    .prov-amount .albl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; font-weight: 600; }
+    .prov-amount .aval { font-size: 14px; font-weight: 700; font-family: 'Space Mono', monospace; }
+
+    .prov-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+    .prov-actions .btn, .prov-actions .btn-icon { font-size: 11px; }
+
+    /* ======================== PROGRESS BAR ======================== */
+    .progress-bar { height: 5px; background: var(--surface3); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+    .progress-fill { height: 100%; border-radius: 3px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+    .progress-fill.red { background: linear-gradient(90deg, var(--red), #fb7185); }
+    .progress-fill.yellow { background: linear-gradient(90deg, var(--yellow), #fbbf24); }
+    .progress-fill.green { background: linear-gradient(90deg, #34d399, var(--green)); }
+
+    /* ======================== DETAIL VIEW ======================== */
+    .detail-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .btn-back {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      color: var(--text); font-family: inherit; font-size: 13px; font-weight: 600;
+      padding: 8px 14px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+      transition: border-color var(--transition);
+    }
+    .btn-back:hover { border-color: var(--border-hover); }
+    .detail-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .detail-info-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px;
+    }
+    .detail-info-card .dil { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; margin-bottom: 4px; }
+    .detail-info-card .div { font-size: 14px; font-weight: 700; word-break: break-all; }
+    .detail-quick-actions { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+
+    .section-title {
+      font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;
+      letter-spacing: .5px; margin-bottom: 10px; margin-top: 20px;
+    }
+
+    /* ======================== DETAIL HISTORIC TABLES ======================== */
+    .detail-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow-x: auto; margin-bottom: 15px; }
+    .detail-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .detail-table th { text-align: left; padding: 8px 12px; color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); }
+    .detail-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    .detail-table tr:last-child td { border-bottom: none; }
+
+    /* ======================== MODALS ======================== */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0, 0, 0, .65); backdrop-filter: blur(6px);
+      display: none; align-items: flex-end; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px 20px 0 0; width: 100%; max-width: 600px;
+      max-height: 92vh; overflow-y: auto; padding: 24px;
+      animation: modalSlideUp .3s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes modalSlideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .modal-title { font-size: 17px; font-weight: 800; }
+    .btn-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 22px; line-height: 1; padding: 4px; }
+    .btn-close:hover { color: var(--text); }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 13px;
+      padding: 10px 12px; outline: none; transition: border-color var(--transition);
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+    .form-group select option { background: var(--surface); }
+    .form-group textarea { resize: vertical; min-height: 70px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-hint { font-size: 10px; color: var(--muted); margin-top: 3px; }
+    .modal-footer { display: flex; gap: 10px; margin-top: 18px; }
+    .modal-footer .btn { flex: 1; justify-content: center; padding: 12px; font-size: 13px; }
+
+    /* ======================== FILE UPLOAD ======================== */
+    .file-drop {
+      border: 2px dashed var(--border); border-radius: var(--radius-sm);
+      padding: 20px; text-align: center; cursor: pointer;
+      transition: border-color var(--transition); position: relative;
+    }
+    .file-drop:hover { border-color: var(--accent); }
+    .file-drop input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .file-drop-icon { font-size: 24px; margin-bottom: 6px; }
+    .file-drop-text { font-size: 12px; color: var(--muted); }
+    .file-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .file-preview-item {
+      position: relative; width: 64px; height: 64px; background: var(--surface2);
+      border-radius: 8px; overflow: hidden; border: 1px solid var(--border);
+    }
+    .file-preview-item img { width: 100%; height: 100%; object-fit: cover; }
+    .file-preview-item .fp-name {
+      font-size: 8px; color: var(--muted); position: absolute; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,.7); padding: 2px 3px; text-align: center;
+      overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    }
+    .fp-remove {
+      position: absolute; top: 2px; right: 2px; width: 16px; height: 16px;
+      background: var(--red); border-radius: 50%; border: none; color: #fff;
+      font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ======================== TABLE WRAP ======================== */
+    .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow-x: auto; }
+    .mov-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .mov-table th { text-align: left; padding: 10px 12px; color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; border-bottom: 1px solid var(--border); }
+    .mov-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .mov-table tr:last-child td { border-bottom: none; }
+    .mov-table tr:hover td { background: var(--surface2); }
+
+    /* ======================== LIGHTBOX ======================== */
+    .lightbox {
+      position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,.94);
+      display: none; align-items: center; justify-content: center; flex-direction: column; gap: 12px;
+    }
+    .lightbox.open { display: flex; }
+    .lightbox img { max-width: 95vw; max-height: 80vh; border-radius: 8px; object-fit: contain; }
+    .lightbox-close {
+      position: absolute; top: 16px; right: 16px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 50%; width: 36px; height: 36px;
+      color: var(--text); font-size: 20px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .lightbox-download {
+      background: var(--accent); border: none; border-radius: 8px; color: #fff;
+      font-family: inherit; font-size: 13px; font-weight: 700; padding: 10px 20px; cursor: pointer;
+    }
+
+    /* ======================== TOAST ======================== */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 12px 20px; font-size: 13px; font-weight: 600; z-index: 999;
+      transition: transform .3s cubic-bezier(.4,0,.2,1); white-space: nowrap; max-width: 90vw; text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.success { border-color: var(--green); color: var(--green); }
+    .toast.error { border-color: var(--red); color: var(--red); }
+
+    /* ======================== SYNC BADGE ======================== */
+    .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: inline-block; transition: background-color .3s; }
+    .sync-dot.syncing { background: var(--accent); animation: pulse-sync 1.2s infinite ease-in-out; }
+    .sync-dot.connected { background: var(--green); }
+    .sync-dot.error { background: var(--red); }
+    .sync-dot.offline { background: var(--yellow); }
+    @keyframes pulse-sync { 0%,100% { transform: scale(.85); opacity: .6; } 50% { transform: scale(1.3); opacity: 1; } }
+
+    /* ======================== CONFIG ======================== */
+    .config-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+    .config-title { font-size: 16px; font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .config-desc { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+    .config-group { margin-bottom: 14px; }
+    .config-group label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+    .config-group input {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 13px;
+      padding: 11px 13px; outline: none; transition: border-color var(--transition);
+    }
+    .config-group input:focus { border-color: var(--accent); }
+    .sync-status-box { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; margin-top: 20px; }
+    .sync-status-title { font-size: 11px; font-weight: 700; color: var(--text); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .5px; }
+    .sync-status-item { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .sync-status-item span:last-child { color: var(--text); font-weight: 600; }
+    .app-info-footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 40px; }
+
+    /* ======================== EMPTY STATE ======================== */
+    .empty-state { text-align: center; padding: 40px 24px; color: var(--muted); }
+    .empty-state-icon { font-size: 40px; margin-bottom: 10px; }
+    .empty-state-text { font-size: 13px; }
+
+    /* ======================== RESPONSIVE ======================== */
+    @media(max-width:480px) {
+      .dash-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .dash-card .dash-val { font-size: 16px; }
+      .summary-card .val { font-size: 13px; }
+      .form-row { grid-template-columns: 1fr; }
+      .detail-info-grid { grid-template-columns: 1fr; }
+      .prov-amounts { gap: 10px; }
+      .prov-amount .aval { font-size: 13px; }
+    }
+    @media(min-width:600px) {
+      .modal-overlay { align-items: center; padding: 24px; }
+      .modal { border-radius: 20px; max-height: 85vh; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ==================== LOGIN SCREEN ==================== -->
+  <div id="loginScreen">
+    <div class="login-box">
+      <div class="login-logo">Empa<span>PRO</span></div>
+      <div class="login-sub" id="loginSubText">Cargando módulo de autenticación...</div>
+      <div id="clerk-signin-container" style="display:flex;justify-content:center;margin-top:20px"></div>
+    </div>
+  </div>
+
+  <!-- ==================== APP ==================== -->
+  <div id="app">
+    <header>
+      <div class="logo">Empa<span>PRO</span></div>
+      <div class="header-right">
+        <div id="syncBadge" class="user-badge" style="cursor:pointer;display:flex;align-items:center;gap:5px;" onclick="syncWithSheet()">
+          <span class="sync-dot"></span>
+          <span id="syncText">Cargando...</span>
+        </div>
+        <div class="user-badge" id="userBadge">
+          <div class="user-avatar" id="userAvatar">U</div>
+          <span id="userLabel">Usuario</span>
+        </div>
+        <button class="btn-logout" onclick="doLogout()">Salir</button>
+      </div>
+    </header>
+
+    <nav>
+      <button class="nav-tab active" data-section="dashboard" onclick="switchTab(this,'dashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="4" rx="1"/><rect x="14" y="10" width="7" height="11" rx="1"/><rect x="3" y="13" width="7" height="8" rx="1"/></svg>
+        Panel
+      </button>
+      <button class="nav-tab" data-section="franquicias" onclick="switchTab(this,'franquicias')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        Franquicias
+      </button>
+      <button class="nav-tab" data-section="cierre" onclick="switchTab(this,'cierre')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Cobro Semanal
+      </button>
+      <button class="nav-tab" data-section="deudas" onclick="switchTab(this,'deudas')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Deudas
+      </button>
+      <button class="nav-tab" data-section="reportes" onclick="switchTab(this,'reportes')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20V14"/></svg>
+        Reportes
+      </button>
+      <button class="nav-tab" data-section="config" onclick="switchTab(this,'config')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Ajustes
+      </button>
+    </nav>
+
+    <main>
+      <!-- ========== DASHBOARD (Panel) ========== -->
+      <div class="section active" id="sec-dashboard">
+        <div class="dash-grid" id="dashGrid"></div>
+        <div class="dash-status-chips" id="dashStatusChips"></div>
+        
+        <div class="dash-section">
+          <div class="dash-section-title">
+            <span>🔴 Franquicias con deudas</span>
+            <!-- BUG #2 CORREGIDO: querySelector con atributo correcto -->
+            <button class="btn btn-sm btn-secondary" onclick="switchTab(document.querySelector('[data-section=cierre]'), 'cierre')">Cierre Semanal →</button>
+          </div>
+          <div id="dashUrgent"></div>
+        </div>
+
+        <div class="dash-section">
+          <div class="dash-section-title">📋 Últimos pagos recibidos</div>
+          <div id="dashRecent"></div>
+        </div>
+      </div>
+
+      <!-- ========== FRANQUICIAS ========== -->
+      <div class="section" id="sec-franquicias">
+        <div id="provListView">
+          <div class="summary-grid" id="summaryGrid"></div>
+          <div class="toolbar">
+            <div class="search-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input class="search-input" id="searchInput" placeholder="Buscar franquicia..." oninput="renderFranquicias()">
+            </div>
+            <select class="sort-select" id="sortSelect" onchange="renderFranquicias()">
+              <option value="deuda">Mayor deuda</option>
+              <option value="nombre">Nombre A-Z</option>
+              <option value="regalia">Porcentaje regalía (%)</option>
+            </select>
+            <button class="btn" id="btnNuevoProv" onclick="openModal('prov')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nueva
+            </button>
+          </div>
+          <div class="filter-bar" id="filterBar">
+            <button class="filter-chip active" data-filter="todos" onclick="setFilter(this,'todos')">Todas</button>
+            <button class="filter-chip" data-filter="deuda" onclick="setFilter(this,'deuda')">🔴 Con deuda</button>
+            <button class="filter-chip" data-filter="parcial" onclick="setFilter(this,'parcial')">🟡 Deuda parcial</button>
+            <button class="filter-chip" data-filter="dia" onclick="setFilter(this,'dia')">✅ Al día</button>
+          </div>
+          <div class="prov-list" id="provList"></div>
+        </div>
+
+        <div id="provDetailView" style="display:none">
+          <div class="detail-header">
+            <button class="btn-back" onclick="showListView()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
+              Volver
+            </button>
+            <div>
+              <div style="font-size:20px;font-weight:800" id="detailAlias"></div>
+              <div style="font-size:12px;color:var(--muted)" id="detailNombre"></div>
+            </div>
+          </div>
+          
+          <div class="detail-info-grid" id="detailInfoGrid"></div>
+          <div class="detail-quick-actions" id="detailActions"></div>
+
+          <div class="section-title">Historial de pedidos semanales</div>
+          <div class="detail-table-wrap">
+            <table class="detail-table">
+              <thead>
+                <tr>
+                  <th>Semana</th>
+                  <th>Docenas</th>
+                  <th>Precio Docena</th>
+                  <th>Total Facturado</th>
+                  <th>Monto Regalía</th>
+                </tr>
+              </thead>
+              <tbody id="detailPedidosTableBody"></tbody>
+            </table>
+          </div>
+
+          <div class="section-title">Historial de pagos recibidos</div>
+          <div class="detail-table-wrap">
+            <table class="detail-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Monto</th>
+                  <th>Observaciones / Comprobante</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="detailPagosTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== COBRO SEMANAL ========== -->
+      <div class="section" id="sec-cierre">
+        <div id="semanaListView">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+            <h2 style="font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-secondary)">Semanas de Cierre</h2>
+            <button class="btn btn-sm" onclick="openCreateSemanaModal()">➕ Nueva Semana</button>
+          </div>
+          
+          <div class="toolbar" style="justify-content:space-between;background:var(--surface);border:1px solid var(--border);padding:10px 14px;border-radius:var(--radius);margin-bottom:15px">
+            <button class="btn btn-secondary btn-sm" onclick="navigateWeek(-1)">← Anterior</button>
+            <div id="currentWeekRange" style="font-family:'Space Mono',monospace;font-weight:700;font-size:14px;color:var(--accent-light)">-</div>
+            <button class="btn btn-secondary btn-sm" onclick="navigateWeek(1)">Siguiente →</button>
+          </div>
+
+          <div class="sync-status-box" id="selectedSemanaCard" style="margin-top:0;margin-bottom:20px;cursor:pointer" onclick="viewSelectedSemanaPedidos()">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div class="sync-status-title" style="margin-bottom:2px" id="weekStatusTitle">Semana Seleccionada</div>
+                <div style="font-size:12px;color:var(--muted)" id="weekStatusDetails">Métricas de la semana</div>
+              </div>
+              <span class="prov-badge" id="weekStatusBadge">Abierta</span>
+            </div>
+          </div>
+
+          <div class="section-title">Pedidos cargados para la semana seleccionada</div>
+
+          <!-- BUG #3 CORREGIDO: Botón "Cargar Pedido" añadido correctamente en la vista de semana -->
+          <div style="margin-bottom:10px">
+            <button class="btn btn-sm" id="btnNuevoPedido" onclick="openPedidoModal()">➕ Cargar Pedido</button>
+          </div>
+
+          <div id="weeklyOrdersList" class="prov-list" style="margin-bottom:15px"></div>
+          
+          <div class="toolbar" style="justify-content:space-between;background:var(--surface);border:1px solid var(--border);padding:14px;border-radius:var(--radius)" id="weeklyTotalsBar">
+            <div style="font-size:13px;font-weight:600">Total docenas: <span id="totWeekDocenas" style="font-family:'Space Mono';font-weight:800;color:var(--accent-light)">0</span></div>
+            <div style="font-size:13px;font-weight:600">Total facturado: <span id="totWeekFacturado" style="font-family:'Space Mono';font-weight:800;color:var(--green)">$0</span></div>
+            <button class="btn" id="btnCalcularCierre" onclick="calcularCierreSemana()">Calcular Cierre</button>
+          </div>
+        </div>
+
+        <div id="semanaCierreView" style="display:none">
+          <div class="detail-header">
+            <button class="btn-back" onclick="backToWeekView()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
+              Volver a Pedidos
+            </button>
+            <div>
+              <div style="font-size:18px;font-weight:800">Cierre Semanal de Cobros</div>
+              <div style="font-size:12px;color:var(--muted)" id="closingPeriodLabel">Lun 16/06 - Dom 22/06</div>
+            </div>
+          </div>
+
+          <div class="sync-status-box" style="margin-top:0;margin-bottom:20px;border-color:var(--accent-light)">
+            <div class="sync-status-title">Resumen de Cierre</div>
+            <p style="font-size:12px;color:var(--text-secondary);line-height:1.5;margin-bottom:10px">El cierre calcula automáticamente el monto de regalía a cobrar a cada sucursal basado en su facturación y el porcentaje configurado.</p>
+            <div style="font-size:16px;font-weight:800;color:var(--accent-light)">Total Regalías a Cobrar: <span id="totClosingCobrar" style="font-family:'Space Mono'">$0</span></div>
+          </div>
+
+          <div class="table-wrap" style="margin-bottom:20px">
+            <table class="mov-table">
+              <thead>
+                <tr>
+                  <th>Franquicia</th>
+                  <th>Docenas</th>
+                  <th>Facturado</th>
+                  <th>% Regalía</th>
+                  <th>Monto a Cobrar</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="closingTableBody"></tbody>
+            </table>
+          </div>
+
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-secondary" onclick="exportClosingExcel()" style="flex:1;justify-content:center">📥 Exportar Cierre Excel</button>
+            <button class="btn" id="btnConfirmClosing" onclick="confirmarCierreSemana()" style="flex:1;justify-content:center">✅ Confirmar y Registrar Deudas</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== DEUDAS ========== -->
+      <div class="section" id="sec-deudas">
+        <div class="summary-grid" id="deudasSummaryGrid" style="margin-bottom: 15px"></div>
+        
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+          <h2 style="font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-secondary)">Historial de Movimientos de Deuda</h2>
+          <button class="btn btn-sm" onclick="openMockPagoModal()">➕ Registrar Pago</button>
+        </div>
+
+        <div class="toolbar">
+          <div class="search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input class="search-input" id="movSearch" placeholder="Buscar por franquicia..." oninput="renderMovimientos()">
+          </div>
+          <select class="sort-select" id="movTypeFilter" onchange="renderMovimientos()">
+            <option value="todos">Todos los movimientos</option>
+            <option value="pago">Solo Pagos</option>
+            <option value="cierre">Solo Cierres (Deuda nueva)</option>
+          </select>
+          <button class="btn btn-secondary" onclick="exportMovementsExcel()">📥 Excel</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="mov-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Franquicia</th>
+                <th>Tipo Mov.</th>
+                <th>Monto</th>
+                <th>Pendiente Act.</th>
+                <th>Observaciones</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="movTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ========== REPORTES ========== -->
+      <div class="section" id="sec-reportes">
+        <div class="config-container">
+          <div class="config-title">📊 Ventas por Franquicia</div>
+          <div class="config-desc">Gráfico interactivo nativo (SVG) que refleja la cantidad de docenas vendidas acumuladas en las semanas del último mes.</div>
+          
+          <div style="width:100%;height:260px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;padding:16px" id="svgChartContainer">
+          </div>
+        </div>
+
+        <div class="config-container">
+          <div class="config-title">📈 Historial de Facturación por Semana</div>
+          <div class="config-desc">Consolidado histórico de semanas cerradas y facturación general acumulada.</div>
+          
+          <div class="table-wrap">
+            <table class="mov-table">
+              <thead>
+                <tr>
+                  <th>Período</th>
+                  <th>Total Facturado</th>
+                  <th>Total Regalías</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="reportsHistoryTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== CONFIGURACIÓN / AJUSTES ========== -->
+      <div class="section" id="sec-config">
+        <div class="config-container">
+          <div class="config-title">🏢 Configuración de Franquicias</div>
+          <div class="config-desc">Habilitá, editá y configurá los porcentajes de regalías asignados a las sucursales de empanadas.</div>
+          <div class="prov-list" id="cfgFranchiseList"></div>
+        </div>
+
+        <div class="config-container">
+          <div class="config-title">⚙️ Ajustes de Sincronización y Bases de Datos</div>
+          <div class="config-desc">Conectá EmpaPRO con Clerk, Neon DB y Cloudflare R2 para sincronizar los datos en tiempo real.</div>
+          
+          <div class="config-group">
+            <label>API URL (Google Apps Script)</label>
+            <input type="url" id="cfgSheetUrl" placeholder="https://script.google.com/macros/s/.../exec">
+          </div>
+          <div class="config-group">
+            <label>Token Apps Script</label>
+            <input type="password" id="cfgSheetToken" placeholder="Token de verificación">
+          </div>
+
+          <div class="config-group" style="margin-top:20px">
+            <label>Neon Connection String (PostgreSQL)</label>
+            <input type="text" id="cfgNeonConn" placeholder="postgresql://neondb_owner:...@ep-lucky-...tech/neondb">
+          </div>
+
+          <div class="config-group" style="margin-top:20px">
+            <label>Cloudflare R2 Account ID</label>
+            <input type="text" id="cfgR2AccId" placeholder="Account ID (desde Cloudflare Dashboard)">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>R2 Access Key ID</label>
+              <input type="password" id="cfgR2Key" placeholder="Access Key ID">
+            </div>
+            <div class="form-group">
+              <label>R2 Secret Access Key</label>
+              <input type="password" id="cfgR2Secret" placeholder="Secret Access Key">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Cloudflare R2 Bucket Name</label>
+              <input type="text" id="cfgR2Bucket" placeholder="empa-comprobantes">
+            </div>
+            <div class="form-group">
+              <label>R2 Public Custom Domain / URL</label>
+              <input type="text" id="cfgR2Domain" placeholder="https://pub-xxxx.r2.dev">
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:20px">
+            <button class="btn" onclick="saveAppConfig()" style="flex:1;justify-content:center">💾 Guardar Config</button>
+            <button class="btn btn-secondary" onclick="forceSync()" style="justify-content:center">🔄 Sincronizar Google Sheets</button>
+            <button class="btn btn-secondary" onclick="resetMockData()" style="justify-content:center;color:var(--red)">Reiniciar Datos Mock</button>
+          </div>
+
+          <div class="sync-status-box">
+            <div class="sync-status-title">Estado de la Aplicación</div>
+            <div class="sync-status-item"><span>Modo Actual:</span><span id="appModeVal" style="color:var(--yellow)">Cargando...</span></div>
+            <div class="sync-status-item"><span>Operaciones en cola local:</span><span id="queueCountVal">0 acciones</span></div>
+            <div class="sync-status-item"><span>Conexión a Internet:</span><span id="netStatusVal">Online</span></div>
+          </div>
+        </div>
+        <div class="app-info-footer">EmpaPRO v1.0.0 · PWA Offline-first</div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- Modal Franquicia -->
+  <div class="modal-overlay" id="modalProv">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="modalProvTitle">Nueva Franquicia</div>
+        <button class="btn-close" onclick="closeModal('modalProv')">×</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Alias (Identificador único) *</label>
+          <input type="text" id="fProvAlias" placeholder="Ej: Recta Martinoli">
+        </div>
+        <div class="form-group">
+          <label>Nombre de la Sucursal</label>
+          <input type="text" id="fProvNombre" placeholder="Ej: Empanadas Recta Martinoli">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Regalía (%) *</label>
+          <input type="number" id="fProvRegalia" placeholder="0" min="0" max="100" step="0.5" value="10">
+        </div>
+        <div class="form-group">
+          <label>Teléfono</label>
+          <input type="text" id="fProvTel" placeholder="Ej: +5493512345678">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="fProvEmail" placeholder="sucursal@empapro.com">
+      </div>
+      <div class="form-group">
+        <label>Notas de la Sucursal</label>
+        <textarea id="fProvObs" placeholder="Horarios de entrega, notas sobre cobros, etc..."></textarea>
+      </div>
+      <div class="form-row" id="rowDeudaFecha" style="display:none">
+        <div class="form-group">
+          <label>Deuda Total Acumulada ($)</label>
+          <input type="text" inputmode="decimal" id="fProvDeudaTotal" placeholder="Ej: 70000" oninput="formatMontoInputLive(this)" onblur="formatMontoInputBlur(this)">
+        </div>
+        <div class="form-group">
+          <label>Fecha de Alta</label>
+          <input type="date" id="fProvFechaAlta">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modalProv')">Cancelar</button>
+        <button class="btn" onclick="saveFranquicia()">Guardar Franquicia</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Registrar Pago -->
+  <div class="modal-overlay" id="modalPago">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Registrar Cobro / Pago</div>
+        <button class="btn-close" onclick="closeModal('modalPago')">×</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px">
+        Franquicia: <strong id="pagoProvNombre" style="color:var(--text)"></strong> · Deuda Pendiente: <strong id="pagoPending" style="color:var(--red)">$0</strong>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Fecha del Cobro *</label>
+          <input type="date" id="fPagoFecha">
+        </div>
+        <div class="form-group">
+          <label>Tipo de Pago *</label>
+          <select id="fPagoTipo" onchange="onPagoTipoChange()">
+            <option value="parcial">Pago parcial</option>
+            <option value="total">Pago total (Liquidar deuda)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Monto Recibido ($ ARS) *</label>
+        <input type="text" inputmode="decimal" id="fPagoMonto" placeholder="Ej: 70000" oninput="formatMontoInputLive(this)" onblur="formatMontoInputBlur(this)">
+      </div>
+      <div class="form-group">
+        <label>Observaciones</label>
+        <textarea id="fPagoObs" placeholder="Nro de transferencia, banco u observaciones del efectivo..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Comprobante de Pago (Captura o PDF)</label>
+        <div class="file-drop" id="fileDrop">
+          <input type="file" id="fPagoFile" accept="image/*,.pdf" onchange="handlePagoFile(event)">
+          <div class="file-drop-icon">📎</div>
+          <div class="file-drop-text" id="fileDropText">Tocá para adjuntar comprobante</div>
+        </div>
+        <div class="file-preview" id="filePreview"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modalPago')">Cancelar</button>
+        <button class="btn" onclick="savePago()">Confirmar Pago</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Pedido Semanal -->
+  <div class="modal-overlay" id="modalPedido">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="modalPedidoTitle">Cargar Pedido Semanal</div>
+        <button class="btn-close" onclick="closeModal('modalPedido')">×</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px">
+        Semana: <strong id="pedidoSemanaPeriodo" style="color:var(--text)">-</strong>
+      </div>
+      <div class="form-group">
+        <label>Franquicia / Sucursal *</label>
+        <select id="fPedidoFranquicia"></select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Docenas de Empanadas *</label>
+          <input type="number" id="fPedidoDocenas" placeholder="0" min="0.5" step="0.5" value="10">
+        </div>
+        <div class="form-group">
+          <label>Precio por Docena ($ ARS) *</label>
+          <input type="text" inputmode="decimal" id="fPedidoPrecio" placeholder="4000" oninput="formatMontoInputLive(this)" onblur="formatMontoInputBlur(this)">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modalPedido')">Cancelar</button>
+        <button class="btn" onclick="savePedido()">Cargar Pedido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Crear Nueva Semana -->
+  <div class="modal-overlay" id="modalCrearSemana">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Crear Nueva Semana de Cierre</div>
+        <button class="btn-close" onclick="closeModal('modalCrearSemana')">×</button>
+      </div>
+      <div class="form-group">
+        <label>Seleccionar una fecha de la semana *</label>
+        <input type="date" id="fSemanaFechaInput" onchange="updateCalculatedWeekDates()">
+        <div class="form-hint" style="color:var(--accent-light)">El sistema calculará automáticamente la semana de lunes a domingo para esa fecha.</div>
+      </div>
+      <div class="form-row" style="background:var(--bg-elevated);border:1px solid var(--border);padding:12px;border-radius:var(--radius-sm);margin-bottom:15px">
+        <div>
+          <div style="font-size:10px;color:var(--muted)">INICIO (LUNES)</div>
+          <div style="font-size:14px;font-weight:700" id="calculatedWeekStart">-</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted)">FIN (DOMINGO)</div>
+          <div style="font-size:14px;font-weight:700" id="calculatedWeekEnd">-</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modalCrearSemana')">Cancelar</button>
+        <button class="btn" onclick="saveNuevaSemana()">Crear Semana</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" onclick="closeLightbox()">×</button>
+    <img id="lightboxImg" src="" alt="Comprobante">
+    <button class="lightbox-download" onclick="downloadLightbox()">⬇ Descargar</button>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- IndexedDB Helper -->
+  <script>
+    const DB_NAME = 'empapro_files_db';
+    const STORE_NAME = 'files';
+    function getDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = e => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        };
+        req.onsuccess = e => resolve(e.target.result);
+        req.onerror = e => reject(e.target.error);
+      });
+    }
+    async function saveFileOffline(id, base64, name, mimeType) {
+      try {
+        const db = await getDB();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          tx.objectStore(STORE_NAME).put({ id, base64, name, mimeType });
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+        return `local://${id}`;
+      } catch (err) {
+        console.error("IndexedDB save error:", err);
+        return base64;
+      }
+    }
+    async function getFileOffline(id) {
+      try {
+        const db = await getDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readonly');
+          const req = tx.objectStore(STORE_NAME).get(id);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      } catch (e) { return null; }
+    }
+    async function deleteFileOffline(id) {
+      try {
+        const db = await getDB();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          tx.objectStore(STORE_NAME).delete(id);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch (e) {}
+    }
+  </script>
+
+  <!-- BUG #4 CORREGIDO: El bloque ESM ahora espera a que Clerk ya esté en el DOM (sin async)
+       y el initClerk se llama directamente después de que los módulos ESM están listos -->
+  <script type="module">
+    import { neon } from 'https://esm.sh/@neondatabase/serverless';
+    import { S3Client, PutObjectCommand } from 'https://esm.sh/@aws-sdk/client-s3';
+
+    window.neon = neon;
+    window.S3Client = S3Client;
+    window.PutObjectCommand = PutObjectCommand;
+    
+    // FIX race condition: marcar flag antes de disparar el evento
+    // para que el listener del script clásico lo detecte si llegó tarde
+    window._modulesReady = true;
+    window.dispatchEvent(new CustomEvent('modules-ready'));
+  </script>
+
+  <script>
+    // ===================== ESTADO GENERAL =====================
+    const state = {
+      franquicias: [],
+      semanas: [],
+      pedidos: [],
+      cierres: [],
+      movimientos: []
+    };
+
+    let currentUser = null;
+    let currentFilter = 'todos';
+    let currentDetailFranchiseAlias = null;
+    let selectedSemanaIndex = 0;
+    let editingPedidoId = null;
+    let pendingFileBase64 = null;
+    let pendingFileName = '';
+    
+    let dbSql = null;
+    let s3Client = null;
+    let syncQueue = [];
+
+    // BUG #5 CORREGIDO: syncQueue se inicializa de forma segura (JSON.parse puede fallar)
+    try {
+      syncQueue = JSON.parse(localStorage.getItem('empapro_sync_queue')) || [];
+    } catch(e) {
+      syncQueue = [];
+    }
+
+    // FIX: El evento 'modules-ready' puede dispararse ANTES de que este listener
+    // esté registrado (race condition). Usamos flag global para no perderlo.
+    function startClerkPolling() {
+      let checkCount = 0;
+      const MAX_CHECKS = 100;
+      const checkClerk = setInterval(async () => {
+        checkCount++;
+        if (typeof Clerk !== 'undefined') {
+          clearInterval(checkClerk);
+          await initClerk();
+        } else if (checkCount >= MAX_CHECKS) {
+          clearInterval(checkClerk);
+          console.error("Clerk script failed to load after 10 seconds");
+          document.getElementById('loginSubText').textContent = 'Error: No se pudo cargar el módulo de autenticación. Recargá la página.';
+          // BUG #8 CORREGIDO: fallback a modo local si Clerk no carga
+          showAppInOfflineMode();
+        }
+      }, 100);
+    }
+
+    // Registrar listener y manejar race condition: si modules-ready ya se disparó, arrancar igual
+    window.addEventListener('modules-ready', startClerkPolling);
+    if (window._modulesReady) { startClerkPolling(); }
+
+    // BUG #8 CORREGIDO: Función de modo offline cuando Clerk no está disponible
+    function showAppInOfflineMode() {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      document.getElementById('userLabel').textContent = 'Modo Local';
+      currentUser = { username: 'Usuario Local', role: 'owner', avatar: null };
+      connectToNeon();
+    }
+
+    // ===================== CLERK AUTHENTICATION =====================
+    async function initClerk() {
+      try {
+        // FIX CRÍTICO: sin afterSignInUrl Clerk redirige a la raíz del dominio.
+        // En file:// eso es C:\. En un servidor es /. Aquí forzamos retorno a esta página.
+        const currentUrl = window.location.href.split('?')[0].split('#')[0];
+        await Clerk.load({
+          afterSignInUrl: currentUrl,
+          afterSignUpUrl: currentUrl,
+          signInUrl: currentUrl,
+        });
+        if (Clerk.user) {
+          currentUser = {
+            // BUG #9 CORREGIDO: acceso seguro a primaryEmailAddress (puede ser null)
+            username: Clerk.user.fullName || (Clerk.user.primaryEmailAddress ? Clerk.user.primaryEmailAddress.emailAddress : 'Usuario'),
+            role: 'owner',
+            avatar: Clerk.user.imageUrl
+          };
+          
+          document.getElementById('loginScreen').style.display = 'none';
+          document.getElementById('app').style.display = 'flex';
+          
+          document.getElementById('userLabel').textContent = currentUser.username;
+          const avatarEl = document.getElementById('userAvatar');
+          if (currentUser.avatar) {
+            avatarEl.innerHTML = `<img src="${currentUser.avatar}" style="width:100%;height:100%;border-radius:50%">`;
+          } else {
+            avatarEl.textContent = currentUser.username[0].toUpperCase();
+          }
+
+          await connectToNeon();
+        } else {
+          document.getElementById('loginScreen').style.display = 'flex';
+          document.getElementById('app').style.display = 'none';
+          
+          // BUG #10 CORREGIDO: Se conserva la estructura del login-box correctamente
+          const loginSubText = document.getElementById('loginSubText');
+          if (loginSubText) loginSubText.textContent = 'Gestión de Franquicias y Cierre Semanal';
+
+          const container = document.getElementById('clerk-signin-container');
+          if (container) {
+            const currentUrl = window.location.href.split('?')[0].split('#')[0];
+            Clerk.mountSignIn(container, {
+              afterSignInUrl: currentUrl,
+              afterSignUpUrl: currentUrl,
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Clerk init failed:", err);
+        // BUG #10 CORREGIDO: Si Clerk falla, mostrar error y permitir modo offline
+        document.getElementById('loginSubText').textContent = 'Error de autenticación. Intentando modo local...';
+        setTimeout(showAppInOfflineMode, 2000);
+      }
+    }
+
+    async function doLogout() {
+      if (typeof Clerk !== 'undefined' && Clerk.user) {
+        await Clerk.signOut();
+      }
+      window.location.reload();
+    }
+
+    // ===================== NEON DATABASES =====================
+    async function connectToNeon() {
+      const dot = document.querySelector('#syncBadge .sync-dot');
+      const text = document.getElementById('syncText');
+      
+      const defaultConn = "postgresql://neondb_owner:npg_Gv1BhMof8ebw@ep-lucky-lab-atof7mj5-pooler.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
+      const connString = localStorage.getItem('empapro_cfg_neon_conn') || defaultConn;
+      
+      if (!localStorage.getItem('empapro_cfg_neon_conn')) {
+        localStorage.setItem('empapro_cfg_neon_conn', defaultConn);
+      }
+
+      dot.className = 'sync-dot syncing';
+      text.textContent = 'Conectando a Neon DB...';
+
+      try {
+        if (!window.neon) throw new Error('Módulo Neon no cargado aún');
+        dbSql = window.neon(connString, { disableWarningInBrowsers: true });
+        
+        await initNeonDatabase();
+        await loadDataFromNeon();
+        
+        dot.className = 'sync-dot connected';
+        text.textContent = 'Conectado a Neon';
+        document.getElementById('appModeVal').textContent = 'Conexión Real (Neon Cloud)';
+        document.getElementById('appModeVal').style.color = 'var(--green)';
+        
+        initR2Client();
+
+        if (navigator.onLine) {
+          await processSyncQueue();
+        }
+      } catch (e) {
+        console.error("Neon Connection failed, using local offline fallback:", e);
+        dot.className = 'sync-dot error';
+        text.textContent = 'Modo Local (Offline)';
+        document.getElementById('appModeVal').textContent = 'Fallback local (Offline)';
+        document.getElementById('appModeVal').style.color = 'var(--yellow)';
+        loadDataLocal();
+      }
+      
+      renderAll();
+      updateStatusDisplay();
+    }
+
+    async function initNeonDatabase() {
+      if (!dbSql) return;
+      try {
+        await dbSql.query(`CREATE TABLE IF NOT EXISTS franquicias (alias VARCHAR(255) PRIMARY KEY, nombre VARCHAR(255), telefono VARCHAR(255), email VARCHAR(255), regalia NUMERIC DEFAULT 0, deuda_total NUMERIC DEFAULT 0, pagado NUMERIC DEFAULT 0, pendiente NUMERIC DEFAULT 0, pct_pagado NUMERIC DEFAULT 0, estado VARCHAR(50), observaciones TEXT, fecha_alta DATE)`);
+        await dbSql.query(`CREATE TABLE IF NOT EXISTS semanas (semana VARCHAR(50) PRIMARY KEY, fecha_inicio DATE, fecha_fin DATE, total_facturado NUMERIC DEFAULT 0, estado VARCHAR(50) DEFAULT 'abierta')`);
+        await dbSql.query(`CREATE TABLE IF NOT EXISTS pedidos (id VARCHAR(50) PRIMARY KEY, semana VARCHAR(50) REFERENCES semanas(semana) ON DELETE CASCADE, franquicia_alias VARCHAR(255) REFERENCES franquicias(alias) ON DELETE CASCADE, docenas NUMERIC DEFAULT 0, precio_docena NUMERIC DEFAULT 0, subtotal NUMERIC DEFAULT 0, cerrado BOOLEAN DEFAULT FALSE)`);
+        await dbSql.query(`CREATE TABLE IF NOT EXISTS cierres (id VARCHAR(50) PRIMARY KEY, semana VARCHAR(50) REFERENCES semanas(semana) ON DELETE CASCADE, fecha_cierre DATE, franquicia_alias VARCHAR(255) REFERENCES franquicias(alias) ON DELETE CASCADE, docenas NUMERIC DEFAULT 0, total_facturado NUMERIC DEFAULT 0, regalia NUMERIC DEFAULT 0, monto_cobrar NUMERIC DEFAULT 0, estado VARCHAR(50) DEFAULT 'pendiente')`);
+        await dbSql.query(`CREATE TABLE IF NOT EXISTS movimientos (id VARCHAR(50) PRIMARY KEY, fecha DATE, franquicia_alias VARCHAR(255) REFERENCES franquicias(alias) ON DELETE CASCADE, tipo VARCHAR(50), monto NUMERIC DEFAULT 0, pendiente NUMERIC DEFAULT 0, comprobante TEXT, observaciones TEXT)`);
+        
+        const counts = await dbSql`SELECT COUNT(*) FROM franquicias`;
+        if (Number(counts[0].count) === 0) {
+          const defaultFranchises = [
+            { alias: 'Recta Martinoli', nombre: 'Sucursal Recta Martinoli', regalia: 10 },
+            { alias: 'Urca', nombre: 'Sucursal Urca', regalia: 10 },
+            { alias: 'Juniors', nombre: 'Sucursal Juniors', regalia: 12 },
+            { alias: 'Villa Allende', nombre: 'Sucursal Villa Allende', regalia: 8 },
+            { alias: 'Valle', nombre: 'Sucursal Valle', regalia: 10 },
+            { alias: 'Matías', nombre: 'Sucursal Matías', regalia: 10 },
+            { alias: 'Leo', nombre: 'Sucursal Leo', regalia: 10 }
+          ];
+          for (const f of defaultFranchises) {
+            await dbSql.query(`INSERT INTO franquicias (alias, nombre, regalia, deuda_total, pagado, pendiente, pct_pagado, estado, fecha_alta) VALUES ($1, $2, $3, 0, 0, 0, 100, 'dia', $4)`, [f.alias, f.nombre, f.regalia, todayISO()]);
+          }
+          await dbSql.query(`INSERT INTO semanas (semana, fecha_inicio, fecha_fin, total_facturado, estado) VALUES ('2026-06-15', '2026-06-15', '2026-06-21', 121600, 'cerrada')`);
+          await dbSql.query(`INSERT INTO semanas (semana, fecha_inicio, fecha_fin, total_facturado, estado) VALUES ('2026-06-22', '2026-06-22', '2026-06-28', 136600, 'abierta')`);
+          await dbSql.query(`INSERT INTO pedidos (id, semana, franquicia_alias, docenas, precio_docena, subtotal, cerrado) VALUES ('p1', '2026-06-15', 'Valle', 20, 3800, 76000, true)`);
+          await dbSql.query(`INSERT INTO pedidos (id, semana, franquicia_alias, docenas, precio_docena, subtotal, cerrado) VALUES ('p2', '2026-06-15', 'Matías', 12, 3800, 45600, true)`);
+          await dbSql.query(`INSERT INTO pedidos (id, semana, franquicia_alias, docenas, precio_docena, subtotal, cerrado) VALUES ('p3', '2026-06-22', 'Recta Martinoli', 10, 4000, 40000, false)`);
+          await dbSql.query(`INSERT INTO pedidos (id, semana, franquicia_alias, docenas, precio_docena, subtotal, cerrado) VALUES ('p4', '2026-06-22', 'Juniors', 15, 4000, 60000, false)`);
+          await dbSql.query(`INSERT INTO pedidos (id, semana, franquicia_alias, docenas, precio_docena, subtotal, cerrado) VALUES ('p5', '2026-06-22', 'Urca', 9, 4200, 37800, false)`);
+          await dbSql.query(`INSERT INTO cierres (id, semana, fecha_cierre, franquicia_alias, docenas, total_facturado, regalia, monto_cobrar, estado) VALUES ('c1', '2026-06-15', '2026-06-21', 'Valle', 20, 76000, 10, 7600, 'cobrado')`);
+          await dbSql.query(`INSERT INTO cierres (id, semana, fecha_cierre, franquicia_alias, docenas, total_facturado, regalia, monto_cobrar, estado) VALUES ('c2', '2026-06-15', '2026-06-21', 'Matías', 12, 45600, 10, 4560, 'pendiente')`);
+          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m1', '2026-06-15', 'Urca', 'cierre', 50000, 50000, 'Deuda registrada de saldos históricos')`);
+          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m2', '2026-06-16', 'Juniors', 'cierre', 80000, 80000, 'Deuda registrada de saldos históricos')`);
+          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m3', '2026-06-17', 'Valle', 'cierre', 120000, 120000, 'Saldo histórico inicial')`);
+          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m4', '2026-06-18', 'Matías', 'cierre', 45000, 45000, 'Deuda registrada de saldos históricos')`);
+          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m5', '2026-06-19', 'Leo', 'cierre', 30000, 30000, 'Deuda registrada de saldos históricos')`);
+          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m6', '2026-06-20', 'Valle', 'pago', 120000, 0, 'Transferencia Banco Galicia')`);
+          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m7', '2026-06-21', 'Matías', 'pago', 15000, 30000, 'Pago a cuenta de pedidos anteriores')`);
+          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m8', '2026-06-21', 'Valle', 'cierre', 7600, 7600, 'Cierre semanal (20 docenas a $3800, Regalía 10%)')`);
+          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m9', '2026-06-21', 'Matías', 'cierre', 4560, 34560, 'Cierre semanal (12 docenas a $3800, Regalía 10%)')`);
+          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m10', '2026-06-22', 'Valle', 'pago', 7600, 0, 'Pago total del cierre semanal - MP')`);
+          await dbSql.query(`UPDATE franquicias SET deuda_total = 50000, pagado = 20000, pendiente = 30000, pct_pagado = 40, estado = 'parcial' WHERE alias = 'Urca'`);
+          await dbSql.query(`UPDATE franquicias SET deuda_total = 80000, pagado = 0, pendiente = 80000, pct_pagado = 0, estado = 'deuda' WHERE alias = 'Juniors'`);
+          await dbSql.query(`UPDATE franquicias SET deuda_total = 127600, pagado = 127600, pendiente = 0, pct_pagado = 100, estado = 'dia' WHERE alias = 'Valle'`);
+          await dbSql.query(`UPDATE franquicias SET deuda_total = 49560, pagado = 15000, pendiente = 34560, pct_pagado = 30, estado = 'parcial' WHERE alias = 'Matías'`);
+          await dbSql.query(`UPDATE franquicias SET deuda_total = 30000, pagado = 0, pendiente = 30000, pct_pagado = 0, estado = 'deuda' WHERE alias = 'Leo'`);
+        }
+      } catch (err) {
+        console.error("Neon DB Initialization failed:", err);
+        throw err;
+      }
+    }
+
+    async function loadDataFromNeon() {
+      if (!dbSql) return;
+      try {
+        const [franRes, semRes, pedRes, cieRes, movRes] = await Promise.all([
+          dbSql`SELECT * FROM franquicias`,
+          dbSql`SELECT * FROM semanas ORDER BY semana ASC`,
+          dbSql`SELECT * FROM pedidos`,
+          dbSql`SELECT * FROM cierres`,
+          dbSql`SELECT * FROM movimientos`
+        ]);
+
+        state.franquicias = franRes.map(row => ({
+          alias: row.alias,
+          nombre: row.nombre,
+          telefono: row.telefono,
+          email: row.email,
+          regalia: Number(row.regalia),
+          deudaTotal: Number(row.deuda_total),
+          pagado: Number(row.pagado),
+          observaciones: row.observaciones,
+          fechaAlta: row.fecha_alta ? row.fecha_alta.toString().slice(0, 10) : ''
+        }));
+
+        state.semanas = semRes.map(row => ({
+          semana: row.semana,
+          fechaInicio: row.fecha_inicio ? row.fecha_inicio.toString().slice(0, 10) : '',
+          fechaFin: row.fecha_fin ? row.fecha_fin.toString().slice(0, 10) : '',
+          totalFacturado: Number(row.total_facturado),
+          estado: row.estado
+        }));
+
+        state.pedidos = pedRes.map(row => ({
+          id: row.id,
+          semana: row.semana,
+          franquiciaAlias: row.franquicia_alias,
+          docenas: Number(row.docenas),
+          precioDocena: Number(row.precio_docena),
+          subtotal: Number(row.subtotal),
+          cerrado: row.cerrado
+        }));
+
+        state.cierres = cieRes.map(row => ({
+          id: row.id,
+          semana: row.semana,
+          fechaCierre: row.fecha_cierre ? row.fecha_cierre.toString().slice(0, 10) : '',
+          franquiciaAlias: row.franquicia_alias,
+          docenas: Number(row.docenas),
+          totalFacturado: Number(row.total_facturado),
+          regalia: Number(row.regalia),
+          montoCobrar: Number(row.monto_cobrar),
+          estado: row.estado
+        }));
+
+        state.movimientos = movRes.map(row => ({
+          id: row.id,
+          fecha: row.fecha ? row.fecha.toString().slice(0, 10) : '',
+          franquiciaAlias: row.franquicia_alias,
+          tipo: row.tipo,
+          monto: Number(row.monto),
+          pendiente: Number(row.pendiente),
+          comprobante: row.comprobante,
+          observaciones: row.observaciones
+        }));
+
+        if (state.semanas.length > 0) {
+          selectedSemanaIndex = state.semanas.length - 1;
+        }
+
+        saveDataLocal();
+      } catch (err) {
+        console.error("Failed to fetch from Neon, using local fallback:", err);
+        loadDataLocal();
+      }
+    }
+
+    function loadDataLocal() {
+      // BUG #11 CORREGIDO: JSON.parse sin try-catch podía crashear si localStorage estaba corrupto
+      try { state.franquicias = JSON.parse(localStorage.getItem('empapro_franquicias')) || []; } catch(e) { state.franquicias = []; }
+      try { state.semanas = JSON.parse(localStorage.getItem('empapro_semanas')) || []; } catch(e) { state.semanas = []; }
+      try { state.pedidos = JSON.parse(localStorage.getItem('empapro_pedidos')) || []; } catch(e) { state.pedidos = []; }
+      try { state.cierres = JSON.parse(localStorage.getItem('empapro_cierres')) || []; } catch(e) { state.cierres = []; }
+      try { state.movimientos = JSON.parse(localStorage.getItem('empapro_movimientos')) || []; } catch(e) { state.movimientos = []; }
+
+      if (state.semanas.length > 0) {
+        selectedSemanaIndex = state.semanas.length - 1;
+      }
+    }
+
+    function saveDataLocal() {
+      localStorage.setItem('empapro_franquicias', JSON.stringify(state.franquicias));
+      localStorage.setItem('empapro_semanas', JSON.stringify(state.semanas));
+      localStorage.setItem('empapro_pedidos', JSON.stringify(state.pedidos));
+      localStorage.setItem('empapro_cierres', JSON.stringify(state.cierres));
+      localStorage.setItem('empapro_movimientos', JSON.stringify(state.movimientos));
+      localStorage.setItem('empapro_sync_queue', JSON.stringify(syncQueue));
+    }
+
+    function resetMockData() {
+      if (confirm('¿Seguro que deseas restaurar todos los datos de simulación al estado inicial?')) {
+        localStorage.removeItem('empapro_franquicias');
+        localStorage.removeItem('empapro_semanas');
+        localStorage.removeItem('empapro_pedidos');
+        localStorage.removeItem('empapro_cierres');
+        localStorage.removeItem('empapro_movimientos');
+        
+        if (dbSql) {
+          dbSql("DROP TABLE IF EXISTS movimientos, cierres, pedidos, semanas, franquicias, config CASCADE")
+            .then(() => connectToNeon())
+            .catch(err => { console.error(err); loadDataLocal(); renderAll(); });
+        } else {
+          loadDataLocal();
+          renderAll();
+          showToast('Datos locales reiniciados', 'success');
+        }
+      }
+    }
+
+    // ===================== CLOUDFLARE R2 =====================
+    function initR2Client() {
+      const r2AccId = localStorage.getItem('empapro_cfg_r2_acc_id') || '';
+      const r2Key = localStorage.getItem('empapro_cfg_r2_key') || '';
+      const r2Secret = localStorage.getItem('empapro_cfg_r2_secret') || '';
+      
+      if (r2AccId && r2Key && r2Secret && window.S3Client) {
+        try {
+          s3Client = new window.S3Client({
+            endpoint: `https://${r2AccId}.r2.cloudflarestorage.com`,
+            credentials: { accessKeyId: r2Key, secretAccessKey: r2Secret },
+            region: 'auto'
+          });
+        } catch (err) {
+          console.error("Failed to initialize R2:", err);
+          s3Client = null;
+        }
+      } else {
+        s3Client = null;
+      }
+    }
+
+    async function uploadFileToR2(id, fileBase64, name, mimeType) {
+      const r2AccId = localStorage.getItem('empapro_cfg_r2_acc_id') || '';
+      const bucketName = localStorage.getItem('empapro_cfg_r2_bucket') || '';
+      const publicDomain = localStorage.getItem('empapro_cfg_r2_domain') || '';
+
+      if (!s3Client || !bucketName) {
+        return await saveFileOffline(id, fileBase64, name, mimeType);
+      }
+
+      try {
+        const base64Clean = fileBase64.split(',')[1] || fileBase64;
+        const binaryStr = atob(base64Clean);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+
+        const ext = name.split('.').pop() || 'png';
+        const key = `comprobantes/${id}.${ext}`;
+
+        await s3Client.send(new window.PutObjectCommand({ Bucket: bucketName, Key: key, Body: bytes, ContentType: mimeType }));
+        
+        const fileUrl = publicDomain 
+          ? `${publicDomain.replace(/\/$/, '')}/${key}`
+          : `https://${bucketName}.${r2AccId}.r2.cloudflarestorage.com/${key}`;
+
+        return fileUrl;
+      } catch (err) {
+        console.error("R2 Upload failed:", err);
+        return await saveFileOffline(id, fileBase64, name, mimeType);
+      }
+    }
+
+    // ===================== SYNC QUEUE =====================
+    function queueAction(action, data) {
+      syncQueue.push({ id: genId(), action, data, timestamp: Date.now() });
+      saveDataLocal();
+      updateStatusDisplay();
+      if (navigator.onLine) processSyncQueue();
+    }
+
+    async function processSyncQueue() {
+      if (syncQueue.length === 0) return;
+      if (!navigator.onLine) return;
+      
+      const dot = document.querySelector('#syncBadge .sync-dot');
+      const text = document.getElementById('syncText');
+      dot.className = 'sync-dot syncing';
+      text.textContent = 'Sincronizando...';
+
+      const queue = [...syncQueue];
+      let hayErrores = false;
+
+      for (const item of queue) {
+        try {
+          if (dbSql) await executeSqlAction(item.action, item.data);
+          
+          const sheetUrl = localStorage.getItem('empapro_cfg_sheet_url');
+          const sheetToken = localStorage.getItem('empapro_cfg_sheet_token');
+          if (sheetUrl) await executeSheetAction(sheetUrl, sheetToken, item.action, item.data);
+
+          // ✅ Éxito: sacar de la cola
+          syncQueue = syncQueue.filter(q => q.id !== item.id);
+          saveDataLocal();
+        } catch (err) {
+          // ⚠️ Si es un delete de algo que ya no existe → descartar silenciosamente
+          const esObjetoInexistente = err.message && (
+            err.message.includes('no encontrada') ||
+            err.message.includes('no encontrado') ||
+            err.message.includes('not found')
+          );
+          const esDelete = item.action.startsWith('delete_');
+
+          if (esObjetoInexistente && esDelete) {
+            console.warn('Descartando acción obsoleta (objeto ya inexistente):', item.action, item.data);
+            syncQueue = syncQueue.filter(q => q.id !== item.id);
+            saveDataLocal();
+          } else {
+            // Error real → loguear pero continuar con el resto de la cola
+            console.error('Failed to sync item:', item, err);
+            hayErrores = true;
+          }
+        }
+      }
+      
+      if (hayErrores) {
+        dot.className = 'sync-dot error';
+        text.textContent = 'Error Sync';
+        showToast('Algunos items no se pudieron sincronizar', 'error');
+      } else {
+        dot.className = 'sync-dot connected';
+        text.textContent = 'Conectado a Neon';
+        updateStatusDisplay();
+        showToast('Sincronización completada ✓');
+      }
+    }
+
+    // BUG #12 CORREGIDO: syncWithSheet estaba referenciada en el HTML pero no definida
+    function syncWithSheet() {
+      processSyncQueue();
+    }
+
+    async function executeSqlAction(action, data) {
+      if (!dbSql) return;
+      switch (action) {
+        case 'add_franchise':
+          await dbSql.query(`INSERT INTO franquicias (alias, nombre, telefono, email, regalia, deuda_total, pagado, observaciones, fecha_alta) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (alias) DO NOTHING`,
+            [data.alias, data.nombre, data.telefono, data.email, data.regalia, data.deudaTotal, data.pagado, data.observaciones, data.fechaAlta]);
+          break;
+        case 'edit_franchise':
+          await dbSql.query(`UPDATE franquicias SET nombre = $1, telefono = $2, email = $3, regalia = $4, observaciones = $5 WHERE alias = $6`,
+            [data.nombre, data.telefono, data.email, data.regalia, data.observaciones, data.alias]);
+          break;
+        case 'delete_franchise':
+          await dbSql.query("DELETE FROM franquicias WHERE alias = $1", [data.alias]);
+          break;
+        case 'add_pedido':
+          await dbSql.query(`INSERT INTO pedidos (id, semana, franquicia_alias, docenas, precio_docena, subtotal, cerrado) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (id) DO UPDATE SET docenas = EXCLUDED.docenas, precio_docena = EXCLUDED.precio_docena, subtotal = EXCLUDED.subtotal, cerrado = EXCLUDED.cerrado`,
+            [data.id, data.semana, data.franquiciaAlias, data.docenas, data.precioDocena, data.subtotal, data.cerrado]);
+          break;
+        case 'delete_pedido':
+          await dbSql.query("DELETE FROM pedidos WHERE id = $1", [data.id]);
+          break;
+        case 'close_semana':
+          await dbSql.query("UPDATE semanas SET estado = 'cerrada' WHERE semana = $1", [data.semana]);
+          await dbSql.query("UPDATE pedidos SET cerrado = TRUE WHERE semana = $1", [data.semana]);
+          for (const item of data.closures) {
+            // BUG CORREGIDO: usamos los IDs generados una sola vez en el cliente (item.cierreId / item.movId)
+            // en vez de generarlos de nuevo en cada intento. Si la sincronización se corta a mitad de
+            // camino (ej: falla Google Sheets después de aplicar Neon) y se reintenta, ON CONFLICT
+            // evita el error de "duplicate key" y el chequeo de "insertedCierre.length" evita sumar
+            // la deuda dos veces.
+            const insertedCierre = await dbSql.query(
+              `INSERT INTO cierres (id, semana, fecha_cierre, franquicia_alias, docenas, total_facturado, regalia, monto_cobrar, estado)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+               ON CONFLICT (id) DO NOTHING RETURNING id`,
+              [item.cierreId, data.semana, data.fechaCierre, item.franquiciaAlias, item.docenas, item.subtotal, item.regalia, item.montoCobrar, 'pendiente']);
+
+            if (insertedCierre.length > 0) {
+              await dbSql.query(`UPDATE franquicias SET deuda_total = deuda_total + $1 WHERE alias = $2`, [item.montoCobrar, item.franquiciaAlias]);
+              await dbSql.query(
+                `INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (id) DO NOTHING`,
+                [item.movId, data.fechaCierre, item.franquiciaAlias, 'cierre', item.montoCobrar, 0, `Cierre semanal (${item.docenas} docenas, Regalía ${item.regalia}%)`]);
+            }
+          }
+          break;
+        case 'register_payment': {
+          // BUG CORREGIDO: si el movimiento ya existe (reintento tras una sincronización cortada),
+          // no volvemos a sumarle el monto a "pagado" de la franquicia.
+          const insertedPago = await dbSql.query(
+            `INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, comprobante, observaciones)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (id) DO NOTHING RETURNING id`,
+            [data.id, data.fecha, data.franquiciaAlias, 'pago', data.monto, data.pendiente, data.comprobanteUrl || '', data.observaciones]);
+          if (insertedPago.length > 0) {
+            await dbSql.query("UPDATE franquicias SET pagado = pagado + $1 WHERE alias = $2", [data.monto, data.franquiciaAlias]);
+          }
+          if (data.comprobanteUrl && data.comprobanteUrl.includes('local://')) {
+            await deleteFileOffline(data.comprobanteUrl.substring(8));
+          }
+          break;
+        }
+        case 'adjust_debt':
+          // "deuda_total" se fija a un valor absoluto, así que reintentarlo no duplica nada.
+          // Solo el INSERT del movimiento necesita protegerse contra reintentos.
+          await dbSql.query("UPDATE franquicias SET deuda_total = $1 WHERE alias = $2", [data.deudaTotal, data.alias]);
+          await dbSql.query(
+            `INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones)
+             VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (id) DO NOTHING`,
+            [data.movId, todayISO(), data.alias, 'cierre', data.monto, data.pendiente, data.obs]);
+          break;
+        case 'delete_movimiento': {
+          const movs = await dbSql.query("SELECT * FROM movimientos WHERE id = $1", [data.id]);
+          if (movs.length > 0) {
+            const mov = movs[0];
+            if (mov.tipo === 'pago') {
+              await dbSql.query("UPDATE franquicias SET pagado = GREATEST(0, pagado - $1) WHERE alias = $2", [Number(mov.monto), mov.franquicia_alias]);
+            } else {
+              await dbSql.query("UPDATE franquicias SET deuda_total = GREATEST(0, deuda_total - $1) WHERE alias = $2", [Number(mov.monto), mov.franquicia_alias]);
+            }
+          }
+          await dbSql.query("DELETE FROM movimientos WHERE id = $1", [data.id]);
+          break;
+        }
+        // BUG #13 CORREGIDO: accion add_semana no estaba implementada en SQL
+        case 'add_semana':
+          await dbSql.query(`INSERT INTO semanas (semana, fecha_inicio, fecha_fin, total_facturado, estado) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (semana) DO NOTHING`,
+            [data.semana, data.fechaInicio, data.fechaFin, 0, 'abierta']);
+          break;
+      }
+    }
+
+    async function executeSheetAction(url, token, action, data) {
+      // BUG CORREGIDO: antes los errores se atrapaban y solo se logueaban en consola,
+      // nunca se relanzaban -> processSyncQueue creía que todo se sincronizó bien
+      // y borraba la acción de la cola aunque Google Sheets nunca la recibiera.
+      const resp = await fetch(`${url}?token=${encodeURIComponent(token)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        redirect: 'follow',
+        body: JSON.stringify({ action, data })
+      });
+
+      if (!resp.ok) {
+        throw new Error(`Google Sheets respondió HTTP ${resp.status}`);
+      }
+
+      let json;
+      try {
+        json = await resp.json();
+      } catch (e) {
+        throw new Error('Respuesta inválida de Google Sheets (revisá que la URL sea la del Apps Script desplegado como "Aplicación web")');
+      }
+
+      if (json && json.status === 'error') {
+        throw new Error('Google Sheets: ' + (json.message || 'error desconocido (revisá el Token)'));
+      }
+
+      return json;
+    }
+
+    // ===================== CONFIGURACIÓN =====================
+    function saveAppConfig() {
+      const fields = ['cfgSheetUrl','cfgSheetToken','cfgNeonConn','cfgR2AccId','cfgR2Key','cfgR2Secret','cfgR2Bucket','cfgR2Domain'];
+      const keys = ['empapro_cfg_sheet_url','empapro_cfg_sheet_token','empapro_cfg_neon_conn','empapro_cfg_r2_acc_id','empapro_cfg_r2_key','empapro_cfg_r2_secret','empapro_cfg_r2_bucket','empapro_cfg_r2_domain'];
+      fields.forEach((id, i) => {
+        localStorage.setItem(keys[i], document.getElementById(id).value.trim());
+      });
+      connectToNeon();
+      showToast('Configuraciones guardadas ✓');
+    }
+
+    function forceSync() {
+      if (localStorage.getItem('empapro_cfg_sheet_url') || dbSql) {
+        processSyncQueue();
+      } else {
+        showToast('Configurá la URL de Apps Script en Ajustes', 'error');
+      }
+    }
+
+    // ===================== FORMATOS Y AUXILIARES =====================
+    function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+    function fmt(n) { return '$' + Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+
+    // BUG CORREGIDO: parsea montos escritos en formato AR (punto de miles, coma decimal)
+    // Antes los inputs eran type="number", que sólo entiende "." como separador decimal,
+    // entonces "10.000" se interpretaba como 10. Ahora son texto y se parsean acá.
+    function parseMonto(str) {
+      if (str === null || str === undefined) return 0;
+      let s = String(str).trim();
+      if (!s) return 0;
+      // Eliminar símbolo $ y espacios
+      s = s.replace(/[$\s]/g, '');
+      // Sacamos todo lo que no sea dígito, coma o punto
+      s = s.replace(/[^0-9.,]/g, '');
+      if (!s) return 0;
+
+      // Formato argentino: punto = miles, coma = decimal
+      // Ej: "70.000" → 70000 | "70.000,50" → 70000.50 | "70000" → 70000
+      if (s.includes(',')) {
+        // Tiene coma: es separador decimal estilo argentino
+        // Remover todos los puntos (son miles) y cambiar coma por punto
+        s = s.replace(/\./g, '').replace(',', '.');
+      } else {
+        // Sin coma: detectar si los puntos son miles o decimal
+        const parts = s.split('.');
+        if (parts.length === 1) {
+          // Sin punto: número entero → ok
+        } else if (parts.length > 2) {
+          // Múltiples puntos → todos son separadores de miles
+          s = s.replace(/\./g, '');
+        } else {
+          // Un solo punto: si los decimales son exactamente 3 dígitos → miles
+          // si son 1 o 2 dígitos → decimal
+          if (parts[1].length === 3) {
+            s = s.replace(/\./g, ''); // miles: "70.000" → 70000
+          }
+          // si parts[1].length <= 2 lo dejamos como decimal
+        }
+      }
+      const n = parseFloat(s);
+      return isNaN(n) ? 0 : n;
+    }
+
+    // Formatea el monto al perder el foco (blur) — no interrumpe mientras el usuario escribe
+    function formatMontoInputLive(el) {
+      // Solo limpiar caracteres inválidos mientras escribe (letras, etc.)
+      // NO reformatear aún para no romper la escritura de números grandes
+      const val = el.value.replace(/[^0-9.,]/g, '');
+      if (val !== el.value) el.value = val;
+    }
+    function formatMontoInputBlur(el) {
+      // Al salir del campo, formatear con separadores de miles
+      const raw = parseMonto(el.value);
+      el.value = raw ? raw.toLocaleString('es-AR', { maximumFractionDigits: 2 }) : '';
+    }
+    function fmtDate(d) { if (!d) return '–'; const dt = new Date(d + 'T12:00:00'); return dt.toLocaleDateString('es-AR'); }
+    function todayISO() { return new Date().toISOString().slice(0, 10); }
+
+    function getEstado(f) {
+      const pend = (f.deudaTotal || 0) - (f.pagado || 0);
+      if (pend <= 0) return 'dia';
+      if ((f.pagado || 0) > 0) return 'parcial';
+      return 'deuda';
+    }
+
+    function getEstadoLabel(e) { return { dia: '✅ Al día', parcial: '🟡 Deuda parcial', deuda: '🔴 Con deuda' }[e]; }
+    function getBadgeClass(e) { return { dia: 'badge-dia', parcial: 'badge-parcial', deuda: 'badge-deuda' }[e]; }
+    function getCardClass(e) { return { dia: 'estado-dia', parcial: 'estado-parcial', deuda: 'estado-deuda' }[e]; }
+
+    function esc(s) { const d = document.createElement('div'); d.textContent = String(s || ''); return d.innerHTML; }
+
+    function showToast(msg, type = 'success') {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.className = 'toast ' + type;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2800);
+    }
+
+    // ===================== TABS Y VISTAS =====================
+    function switchTab(btn, section) {
+      document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.getElementById('sec-' + section).classList.add('active');
+      
+      if (section === 'dashboard') renderDashboard();
+      if (section === 'franquicias') { showListView(); renderFranquicias(); }
+      if (section === 'cierre') renderWeekView();
+      if (section === 'deudas') renderDeudasTab();
+      if (section === 'reportes') renderReportesTab();
+      if (section === 'config') renderConfigTab();
+    }
+
+    function renderAll() {
+      renderDashboard();
+      renderFranquicias();
+    }
+
+    // ===================== DASHBOARD =====================
+    function renderDashboard() {
+      const totalPendiente = state.franquicias.reduce((acc, f) => acc + Math.max(0, f.deudaTotal - f.pagado), 0);
+      const totalCobrado = state.franquicias.reduce((acc, f) => acc + f.pagado, 0);
+      const alDia = state.franquicias.filter(f => getEstado(f) === 'dia').length;
+      const conDeuda = state.franquicias.filter(f => getEstado(f) !== 'dia').length;
+
+      document.getElementById('dashGrid').innerHTML = `
+        <div class="dash-card c-red"><div class="dash-icon">💰</div><div class="dash-val val-red">${fmt(totalPendiente)}</div><div class="dash-lbl">Total adeudado</div></div>
+        <div class="dash-card c-green"><div class="dash-icon">✅</div><div class="dash-val val-green">${fmt(totalCobrado)}</div><div class="dash-lbl">Total cobrado</div></div>
+        <div class="dash-card c-yellow"><div class="dash-icon">👥</div><div class="dash-val val-yellow">${conDeuda}</div><div class="dash-lbl">Franquicias con deuda</div></div>
+        <div class="dash-card c-accent"><div class="dash-icon">🏢</div><div class="dash-val val-accent">${alDia}</div><div class="dash-lbl">Franquicias al día</div></div>
+      `;
+
+      document.getElementById('dashStatusChips').innerHTML = `
+        <div class="dash-status-chip"><span style="color:var(--red)">🔴</span> ${conDeuda} con cobros pendientes</div>
+        <div class="dash-status-chip"><span style="color:var(--green)">✅</span> ${alDia} al día</div>
+      `;
+
+      const urgentList = state.franquicias.filter(f => (f.deudaTotal - f.pagado) > 0);
+      const urgentEl = document.getElementById('dashUrgent');
+      if (urgentList.length > 0) {
+        urgentEl.innerHTML = urgentList.map(f => `
+          <div class="dash-urgent-item" onclick="goToFranchiseDetail('${esc(f.alias)}')">
+            <div class="dash-urgent-left">
+              <div class="dash-urgent-alias">${esc(f.alias)}</div>
+              <div class="dash-urgent-cat">Regalía: ${f.regalia}% · Notas: ${esc(f.observaciones || 'Ninguna')}</div>
+            </div>
+            <div class="dash-urgent-pend">${fmt(f.deudaTotal - f.pagado)}</div>
+          </div>
+        `).join('');
+      } else {
+        urgentEl.innerHTML = `<div class="empty-state"><div class="empty-state-text">🎉 Todas las franquicias están al día</div></div>`;
+      }
+
+      const recentPayments = state.movimientos.filter(m => m.tipo === 'pago').sort((a,b) => b.fecha.localeCompare(a.fecha)).slice(0, 5);
+      const recentEl = document.getElementById('dashRecent');
+      if (recentPayments.length > 0) {
+        recentEl.innerHTML = recentPayments.map(m => `
+          <div class="dash-pago-item" onclick="goToFranchiseDetail('${esc(m.franquiciaAlias)}')">
+            <div class="dash-pago-left">
+              <div class="dash-pago-prov">${esc(m.franquiciaAlias)}</div>
+              <div class="dash-pago-date">${fmtDate(m.fecha)}</div>
+            </div>
+            <div style="display:flex;align-items:center">
+              <div class="dash-pago-monto">${fmt(m.monto)}</div>
+              <button class="dash-pago-del" onclick="event.stopPropagation();deletePagoDashboard('${m.id}')" title="Eliminar pago">🗑</button>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        recentEl.innerHTML = `<div class="empty-state"><div class="empty-state-text">Sin cobros registrados recientemente</div></div>`;
+      }
+    }
+
+    async function deletePagoDashboard(id) {
+      if (!confirm('¿Seguro que deseas eliminar este cobro? Se recalcularán las deudas.')) return;
+      const mov = state.movimientos.find(m => m.id === id);
+      if (!mov) return;
+      const fran = state.franquicias.find(f => f.alias === mov.franquiciaAlias);
+      if (fran) fran.pagado = Math.max(0, fran.pagado - mov.monto);
+      state.movimientos = state.movimientos.filter(m => m.id !== id);
+      queueAction('delete_movimiento', { id });
+      saveDataLocal();
+      renderDashboard();
+      showToast('Cobro eliminado', 'error');
+    }
+
+    function goToFranchiseDetail(alias) {
+      document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+      document.querySelector('[data-section="franquicias"]').classList.add('active');
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.getElementById('sec-franquicias').classList.add('active');
+      showDetail(alias);
+    }
+
+    // ===================== FRANQUICIAS =====================
+    function setFilter(btn, filter) {
+      document.querySelectorAll('#filterBar .filter-chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = filter;
+      renderFranquicias();
+    }
+
+    function renderFranquicias() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      const sort = document.getElementById('sortSelect').value;
+
+      let list = state.franquicias.filter(f => {
+        const match = f.alias.toLowerCase().includes(q) || (f.nombre && f.nombre.toLowerCase().includes(q));
+        if (!match) return false;
+        const est = getEstado(f);
+        if (currentFilter !== 'todos' && est !== currentFilter) return false;
+        return true;
+      });
+
+      if (sort === 'nombre') {
+        list.sort((a,b) => a.alias.localeCompare(b.alias));
+      } else if (sort === 'regalia') {
+        list.sort((a,b) => b.regalia - a.regalia);
+      } else {
+        list.sort((a,b) => (b.deudaTotal - b.pagado) - (a.deudaTotal - a.pagado));
+      }
+
+      const totalPending = state.franquicias.reduce((acc, f) => acc + Math.max(0, f.deudaTotal - f.pagado), 0);
+      const totalPaid = state.franquicias.reduce((acc, f) => acc + f.pagado, 0);
+      const countPending = state.franquicias.filter(f => (f.deudaTotal - f.pagado) > 0).length;
+
+      document.getElementById('summaryGrid').innerHTML = `
+        <div class="summary-card"><div class="val val-red">${fmt(totalPending)}</div><div class="lbl">Deuda Total</div></div>
+        <div class="summary-card"><div class="val val-green">${fmt(totalPaid)}</div><div class="lbl">Total Cobrado</div></div>
+        <div class="summary-card"><div class="val val-yellow">${countPending}</div><div class="lbl">Con Deuda</div></div>
+      `;
+
+      const listEl = document.getElementById('provList');
+      if (list.length === 0) {
+        listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">No se encontraron franquicias</div></div>`;
+        return;
+      }
+
+      listEl.innerHTML = list.map(f => {
+        const pend = f.deudaTotal - f.pagado;
+        const est = getEstado(f);
+        const pct = f.deudaTotal > 0 ? Math.round((f.pagado / f.deudaTotal) * 100) : 100;
+        const fillClass = est === 'dia' ? 'green' : est === 'parcial' ? 'yellow' : 'red';
+
+        return `
+          <div class="prov-card ${getCardClass(est)}" onclick="showDetail('${esc(f.alias)}')">
+            <div class="prov-header">
+              <div>
+                <div class="prov-alias">${esc(f.alias)}</div>
+                <div class="prov-nombre">${esc(f.nombre || 'Sin nombre formal')}</div>
+              </div>
+              <div class="prov-badges">
+                <span class="prov-badge ${getBadgeClass(est)}">${getEstadoLabel(est)}</span>
+                <span class="prov-badge badge-normal">Regalía: ${f.regalia}%</span>
+              </div>
+            </div>
+            <div class="prov-meta">
+              ${f.telefono ? `<span class="prov-phone-chip">📞 ${esc(f.telefono)}</span>` : ''}
+              ${f.email ? `<span class="prov-phone-chip">✉️ ${esc(f.email)}</span>` : ''}
+            </div>
+            <div class="prov-amounts">
+              <div class="prov-amount" style="flex: 1 1 100%">
+                <div class="albl">Deuda Pendiente</div>
+                <div class="aval" style="color:${est === 'dia' ? 'var(--green)' : 'var(--red)'}; font-size:15px; font-weight:800">
+                  ${fmt(pend)} <span style="font-size:11px;color:var(--text-secondary);font-weight:normal">(${fmt(f.deudaTotal)} acumulado - ${fmt(f.pagado)} cobrado)</span>
+                </div>
+              </div>
+            </div>
+            <div class="progress-bar"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
+            <div class="prov-actions">
+              <button class="btn btn-sm" onclick="event.stopPropagation();openPagoModal('${esc(f.alias)}')">💳 Registrar Cobro</button>
+              <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openEditFranquicia('${esc(f.alias)}')">✏️ Editar</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function showListView() {
+      document.getElementById('provListView').style.display = 'block';
+      document.getElementById('provDetailView').style.display = 'none';
+      currentDetailFranchiseAlias = null;
+    }
+
+    async function showDetail(alias) {
+      const f = state.franquicias.find(x => x.alias === alias);
+      if (!f) return;
+      currentDetailFranchiseAlias = alias;
+      
+      document.getElementById('provListView').style.display = 'none';
+      document.getElementById('provDetailView').style.display = 'block';
+
+      document.getElementById('detailAlias').textContent = f.alias;
+      document.getElementById('detailNombre').textContent = f.nombre || 'Sucursal';
+
+      const pend = f.deudaTotal - f.pagado;
+      const est = getEstado(f);
+      const pct = f.deudaTotal > 0 ? Math.round((f.pagado / f.deudaTotal) * 100) : 100;
+      const fillClass = est === 'dia' ? 'green' : est === 'parcial' ? 'yellow' : 'red';
+
+      document.getElementById('detailInfoGrid').innerHTML = `
+        <div class="detail-info-card" style="grid-column: 1 / -1">
+          <div class="dil">Deuda Pendiente</div>
+          <div class="div" style="font-size:18px;font-weight:800;color:${est === 'dia' ? 'var(--green)' : 'var(--red)'}">
+            ${fmt(pend)} <span style="font-size:12px;color:var(--text-secondary);font-weight:normal">(${fmt(f.deudaTotal)} acumulado - ${fmt(f.pagado)} cobrado)</span>
+          </div>
+        </div>
+        <div class="detail-info-card">
+          <div class="dil">Porcentaje de Regalía</div>
+          <div class="div">${f.regalia}%</div>
+        </div>
+        <div class="detail-info-card">
+          <div class="dil">Estado financiero</div>
+          <div class="div"><span class="prov-badge ${getBadgeClass(est)}">${getEstadoLabel(est)}</span></div>
+        </div>
+        <div class="detail-info-card">
+          <div class="dil">Teléfono</div>
+          <div class="div">${esc(f.telefono || '–')}</div>
+        </div>
+        <div class="detail-info-card">
+          <div class="dil">Email</div>
+          <div class="div">${esc(f.email || '–')}</div>
+        </div>
+        <div class="detail-info-card" style="grid-column: 1 / -1">
+          <div class="dil">Notas</div>
+          <div class="div" style="font-weight:normal;color:var(--text-secondary)">${esc(f.observaciones || 'Sin notas.')}</div>
+        </div>
+        <div class="detail-info-card" style="grid-column: 1 / -1">
+          <div class="dil">Progreso de cobro (${pct}%)</div>
+          <div class="progress-bar" style="height:8px"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>
+        </div>
+      `;
+
+      document.getElementById('detailActions').innerHTML = `
+        <button class="btn" onclick="openPagoModal('${esc(f.alias)}')">💳 Registrar Cobro</button>
+        <button class="btn btn-secondary" onclick="openEditFranquicia('${esc(f.alias)}')">✏️ Editar Datos</button>
+        <button class="btn btn-secondary" onclick="openAjustarDeudaModal('${esc(f.alias)}')">⚖️ Ajustar Deuda</button>
+        <button class="btn btn-danger" onclick="deleteFranquicia('${esc(f.alias)}')">🗑️ Eliminar</button>
+      `;
+
+      const orders = state.pedidos.filter(p => p.franquiciaAlias === alias).sort((a,b) => b.semana.localeCompare(a.semana));
+      const ordersTbody = document.getElementById('detailPedidosTableBody');
+      ordersTbody.innerHTML = orders.length === 0
+        ? `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">Sin pedidos cargados</td></tr>`
+        : orders.map(p => `
+          <tr>
+            <td><strong>${esc(p.semana)}</strong></td>
+            <td>${p.docenas} doc</td>
+            <td>${fmt(p.precioDocena)}</td>
+            <td style="font-family:'Space Mono';font-weight:700">${fmt(p.subtotal)}</td>
+            <td style="color:var(--accent-light);font-family:'Space Mono'">${fmt(p.subtotal * (f.regalia/100))}</td>
+          </tr>
+        `).join('');
+
+      const payments = state.movimientos.filter(m => m.franquiciaAlias === alias && m.tipo === 'pago').sort((a,b) => b.fecha.localeCompare(a.fecha));
+      const paymentsTbody = document.getElementById('detailPagosTableBody');
+      paymentsTbody.innerHTML = payments.length === 0
+        ? `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px">Sin cobros registrados</td></tr>`
+        : payments.map(m => `
+          <tr>
+            <td>${fmtDate(m.fecha)}</td>
+            <td style="color:var(--green);font-family:'Space Mono';font-weight:700">${fmt(m.monto)}</td>
+            <td>
+              ${esc(m.observaciones || '')}
+              ${m.comprobante ? `<br><a href="#" onclick="openLightboxImage('${m.comprobante}');return false;" style="color:var(--accent);text-decoration:none;font-size:10px;display:inline-block;margin-top:4px">🖼️ Ver Comprobante</a>` : ''}
+            </td>
+            <td>
+              <button onclick="deletePagoDetail('${m.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer" title="Eliminar pago">🗑️</button>
+            </td>
+          </tr>
+        `).join('');
+    }
+
+    async function deletePagoDetail(id) {
+      if (!confirm('¿Seguro que deseas eliminar este cobro?')) return;
+      const mov = state.movimientos.find(m => m.id === id);
+      if (!mov) return;
+      const fran = state.franquicias.find(f => f.alias === mov.franquiciaAlias);
+      if (fran) fran.pagado = Math.max(0, fran.pagado - mov.monto);
+      state.movimientos = state.movimientos.filter(m => m.id !== id);
+      queueAction('delete_movimiento', { id });
+      saveDataLocal();
+      showDetail(currentDetailFranchiseAlias);
+      showToast('Cobro eliminado', 'error');
+    }
+
+    // ===================== FRANQUICIAS CRUD =====================
+    function openEditFranquicia(alias) {
+      const f = state.franquicias.find(x => x.alias === alias);
+      if (!f) return;
+      document.getElementById('modalProvTitle').textContent = 'Editar Franquicia';
+      document.getElementById('fProvAlias').value = f.alias;
+      document.getElementById('fProvAlias').disabled = true;
+      document.getElementById('fProvNombre').value = f.nombre || '';
+      document.getElementById('fProvRegalia').value = f.regalia;
+      document.getElementById('fProvTel').value = f.telefono || '';
+      document.getElementById('fProvEmail').value = f.email || '';
+      document.getElementById('fProvObs').value = f.observaciones || '';
+      document.getElementById('rowDeudaFecha').style.display = 'none'; // no editar deuda desde aquí
+      document.getElementById('modalProv').classList.add('open');
+    }
+
+    function saveFranquicia() {
+      const alias = document.getElementById('fProvAlias').value.trim();
+      const nombre = document.getElementById('fProvNombre').value.trim();
+      const regalia = parseFloat(document.getElementById('fProvRegalia').value) || 0;
+      const telefono = document.getElementById('fProvTel').value.trim();
+      const email = document.getElementById('fProvEmail').value.trim();
+      const obs = document.getElementById('fProvObs').value.trim();
+
+      if (!alias) { showToast('El alias es obligatorio', 'error'); return; }
+
+      const isEdit = document.getElementById('fProvAlias').disabled;
+
+      if (isEdit) {
+        const f = state.franquicias.find(x => x.alias === alias);
+        if (f) {
+          f.nombre = nombre; f.regalia = regalia; f.telefono = telefono; f.email = email; f.observaciones = obs;
+          queueAction('edit_franchise', { alias, nombre, telefono, email, regalia, observaciones: obs });
+        }
+      } else {
+        if (state.franquicias.some(x => x.alias.toLowerCase() === alias.toLowerCase())) {
+          showToast('El alias de franquicia ya existe', 'error'); return;
+        }
+        // Leer deuda inicial y fecha de alta ingresadas en el formulario
+        const deudaInicial = parseMonto(document.getElementById('fProvDeudaTotal').value) || 0;
+        const fechaAlta = document.getElementById('fProvFechaAlta').value || todayISO();
+        const estadoInicial = deudaInicial > 0 ? 'deuda' : 'dia';
+
+        state.franquicias.push({
+          alias, nombre, regalia, telefono, email, observaciones: obs,
+          deudaTotal: deudaInicial, pagado: 0, pendiente: deudaInicial,
+          estado: estadoInicial, fechaAlta
+        });
+        queueAction('add_franchise', {
+          alias, nombre, telefono, email, regalia, observaciones: obs,
+          deudaTotal: deudaInicial, pagado: 0, fechaAlta
+        });
+      }
+
+      saveDataLocal();
+      closeModal('modalProv');
+      renderFranquicias();
+      if (currentDetailFranchiseAlias) showDetail(alias);
+      showToast(isEdit ? 'Franquicia actualizada' : 'Franquicia creada ✓');
+    }
+
+    function deleteFranquicia(alias) {
+      if (!confirm(`¿Eliminar la franquicia "${alias}"? Se borrarán sus pedidos y movimientos.`)) return;
+      state.franquicias = state.franquicias.filter(f => f.alias !== alias);
+      state.pedidos = state.pedidos.filter(p => p.franquiciaAlias !== alias);
+      state.movimientos = state.movimientos.filter(m => m.franquiciaAlias !== alias);
+      state.cierres = state.cierres.filter(c => c.franquiciaAlias !== alias);
+      queueAction('delete_franchise', { alias });
+      saveDataLocal();
+      showListView();
+      renderFranquicias();
+      showToast('Franquicia eliminada', 'error');
+    }
+
+    // ===================== AJUSTE DE DEUDA =====================
+    function openAjustarDeudaModal(alias) {
+      const f = state.franquicias.find(x => x.alias === alias);
+      if (!f) return;
+      const nuevaDeuda = prompt(`Ajustar la DEUDA ACUMULADA de ${f.alias}.\nValor actual: ${fmt(f.deudaTotal)}\nIngresa el nuevo monto total acumulado:`, f.deudaTotal);
+      if (nuevaDeuda === null) return;
+      
+      const parsed = parseMonto(nuevaDeuda);
+      if (isNaN(parsed) || parsed < 0) { showToast('Monto inválido', 'error'); return; }
+
+      const diferencia = parsed - f.deudaTotal;
+      f.deudaTotal = parsed;
+
+      const movId = genId();
+      const pend = parsed - f.pagado;
+      const obs = `Ajuste manual de deuda acumulada`;
+      
+      state.movimientos.push({ id: movId, fecha: todayISO(), franquiciaAlias: alias, tipo: 'cierre', monto: diferencia, pendiente: pend, observaciones: obs });
+      queueAction('adjust_debt', { alias, deudaTotal: parsed, monto: diferencia, pendiente: pend, obs, movId });
+      saveDataLocal();
+      showDetail(alias);
+      showToast('Deuda ajustada ✓');
+    }
+
+    // ===================== COBRO SEMANAL =====================
+    function renderWeekView() {
+      const week = state.semanas[selectedSemanaIndex];
+      
+      document.getElementById('semanaListView').style.display = 'block';
+      document.getElementById('semanaCierreView').style.display = 'none';
+
+      // BUG #14 CORREGIDO: Si no hay semanas, mostrar estado vacío en lugar de crashear
+      if (!week) {
+        document.getElementById('currentWeekRange').textContent = 'Sin semanas creadas';
+        document.getElementById('weekStatusTitle').textContent = 'No hay semanas';
+        document.getElementById('weekStatusDetails').textContent = 'Creá una nueva semana para empezar';
+        document.getElementById('weekStatusBadge').textContent = '–';
+        document.getElementById('weeklyOrdersList').innerHTML = `
+          <div class="empty-state" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
+            <div class="empty-state-text">No hay semanas creadas aún.</div>
+            <button class="btn btn-sm btn-secondary" style="margin-top:10px" onclick="openCreateSemanaModal()">Crear primera semana</button>
+          </div>
+        `;
+        document.getElementById('btnNuevoPedido').style.display = 'none';
+        document.getElementById('btnCalcularCierre').disabled = true;
+        return;
+      }
+
+      document.getElementById('btnNuevoPedido').style.display = '';
+      document.getElementById('currentWeekRange').textContent = `Lun ${formatDateShort(week.fechaInicio)} – Dom ${formatDateShort(week.fechaFin)}`;
+      
+      const badge = document.getElementById('weekStatusBadge');
+      badge.textContent = week.estado === 'cerrada' ? 'Cerrada' : 'Abierta';
+      badge.className = `prov-badge ${week.estado === 'cerrada' ? 'badge-dia' : 'badge-deuda'}`;
+
+      document.getElementById('weekStatusTitle').textContent = `Semana del ${fmtDate(week.fechaInicio)} al ${fmtDate(week.fechaFin)}`;
+      
+      const orders = state.pedidos.filter(p => p.semana === week.semana);
+      const totalDocenas = orders.reduce((acc, o) => acc + o.docenas, 0);
+      const totalFacturado = orders.reduce((acc, o) => acc + o.subtotal, 0);
+
+      document.getElementById('weekStatusDetails').textContent = `Estado: ${week.estado === 'cerrada' ? 'Cierre procesado' : 'Abierta para edición'} · ${orders.length} pedidos registrados.`;
+      document.getElementById('totWeekDocenas').textContent = totalDocenas.toFixed(1);
+      document.getElementById('totWeekFacturado').textContent = fmt(totalFacturado);
+
+      const btnCierre = document.getElementById('btnCalcularCierre');
+      btnCierre.disabled = week.estado === 'cerrada';
+      btnCierre.textContent = week.estado === 'cerrada' ? 'Semana Cerrada' : 'Calcular Cierre';
+
+      const listEl = document.getElementById('weeklyOrdersList');
+      if (orders.length === 0) {
+        listEl.innerHTML = `
+          <div class="empty-state" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
+            <div class="empty-state-text">No hay pedidos cargados en esta semana.</div>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = orders.map(o => {
+        const isClosed = o.cerrado || week.estado === 'cerrada';
+        return `
+          <div class="dash-pago-item" style="cursor:default">
+            <div class="dash-pago-left">
+              <div class="dash-pago-prov">${esc(o.franquiciaAlias)}</div>
+              <div class="dash-pago-date">${o.docenas} docenas @ ${fmt(o.precioDocena)}/doc</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:15px">
+              <div style="font-family:'Space Mono';font-weight:800;font-size:14px">${fmt(o.subtotal)}</div>
+              ${!isClosed ? `
+                <button class="btn-icon btn-sm" onclick="openEditPedido('${o.id}')" title="Editar">✏️</button>
+                <button class="btn-icon btn-sm" onclick="deletePedido('${o.id}')" title="Eliminar" style="color:var(--red)">🗑️</button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // BUG #15 CORREGIDO: viewSelectedSemanaPedidos estaba referenciada en HTML pero no definida
+    function viewSelectedSemanaPedidos() {
+      // Solo redirige el foco al listado, ya visible
+    }
+
+    function navigateWeek(dir) {
+      const nextIdx = selectedSemanaIndex + dir;
+      if (nextIdx >= 0 && nextIdx < state.semanas.length) {
+        selectedSemanaIndex = nextIdx;
+        renderWeekView();
+      } else {
+        showToast('No hay más semanas registradas', 'error');
+      }
+    }
+
+    function openCreateSemanaModal() {
+      document.getElementById('fSemanaFechaInput').value = todayISO();
+      updateCalculatedWeekDates();
+      document.getElementById('modalCrearSemana').classList.add('open');
+    }
+
+    function updateCalculatedWeekDates() {
+      const dateVal = document.getElementById('fSemanaFechaInput').value;
+      if (!dateVal) return;
+      const { monday, sunday } = getWeekRange(new Date(dateVal + 'T12:00:00'));
+      document.getElementById('calculatedWeekStart').textContent = fmtDate(monday.toISOString().slice(0,10));
+      document.getElementById('calculatedWeekEnd').textContent = fmtDate(sunday.toISOString().slice(0,10));
+    }
+
+    function getWeekRange(date) {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - (day === 0 ? 6 : day - 1);
+      const monday = new Date(d); monday.setDate(diff);
+      const sunday = new Date(d); sunday.setDate(diff + 6);
+      return { monday, sunday };
+    }
+
+    function saveNuevaSemana() {
+      const dateVal = document.getElementById('fSemanaFechaInput').value;
+      if (!dateVal) { showToast('Selecciona una fecha', 'error'); return; }
+      
+      const { monday, sunday } = getWeekRange(new Date(dateVal + 'T12:00:00'));
+      const startStr = monday.toISOString().slice(0, 10);
+      
+      if (state.semanas.some(w => w.semana === startStr)) {
+        showToast('La semana para esta fecha ya está registrada', 'error'); return;
+      }
+
+      const endStr = sunday.toISOString().slice(0, 10);
+      const newWeek = { semana: startStr, fechaInicio: startStr, fechaFin: endStr, totalFacturado: 0, estado: 'abierta' };
+
+      state.semanas.push(newWeek);
+      state.semanas.sort((a,b) => a.semana.localeCompare(b.semana));
+      selectedSemanaIndex = state.semanas.findIndex(w => w.semana === startStr);
+      
+      // BUG #13 CORREGIDO: Acción correcta para guardar la semana (add_semana, no add_pedido)
+      queueAction('add_semana', { semana: startStr, fechaInicio: startStr, fechaFin: endStr });
+
+      saveDataLocal();
+      closeModal('modalCrearSemana');
+      renderWeekView();
+      showToast('Nueva semana de cierre creada ✓');
+    }
+
+    // ===================== PEDIDOS =====================
+    function openPedidoModal() {
+      const week = state.semanas[selectedSemanaIndex];
+      if (!week) { showToast('Primero creá una semana', 'error'); return; }
+      
+      document.getElementById('pedidoSemanaPeriodo').textContent = `Lun ${formatDateShort(week.fechaInicio)} – Dom ${formatDateShort(week.fechaFin)}`;
+      
+      const select = document.getElementById('fPedidoFranquicia');
+      select.innerHTML = state.franquicias.map(f => `<option value="${esc(f.alias)}">${esc(f.alias)}</option>`).join('');
+      select.disabled = false;
+
+      editingPedidoId = null;
+      document.getElementById('modalPedidoTitle').textContent = 'Cargar Pedido Semanal';
+      document.getElementById('fPedidoDocenas').value = '10';
+      document.getElementById('fPedidoPrecio').value = '4.000';
+      document.getElementById('modalPedido').classList.add('open');
+    }
+
+    function openEditPedido(id) {
+      const o = state.pedidos.find(x => x.id === id);
+      if (!o) return;
+      const week = state.semanas[selectedSemanaIndex];
+      
+      document.getElementById('pedidoSemanaPeriodo').textContent = `Lun ${formatDateShort(week.fechaInicio)} – Dom ${formatDateShort(week.fechaFin)}`;
+      
+      const select = document.getElementById('fPedidoFranquicia');
+      select.innerHTML = `<option value="${esc(o.franquiciaAlias)}">${esc(o.franquiciaAlias)}</option>`;
+      select.disabled = true;
+
+      editingPedidoId = id;
+      document.getElementById('modalPedidoTitle').textContent = 'Editar Pedido';
+      document.getElementById('fPedidoDocenas').value = o.docenas;
+      document.getElementById('fPedidoPrecio').value = Number(o.precioDocena).toLocaleString('es-AR', { maximumFractionDigits: 2 });
+      document.getElementById('modalPedido').classList.add('open');
+    }
+
+    function savePedido() {
+      const week = state.semanas[selectedSemanaIndex];
+      if (!week) return;
+      
+      const franquiciaAlias = document.getElementById('fPedidoFranquicia').value;
+      const docenas = parseFloat(document.getElementById('fPedidoDocenas').value) || 0;
+      const precioDocena = parseMonto(document.getElementById('fPedidoPrecio').value);
+
+      if (docenas <= 0 || precioDocena <= 0) { showToast('Monto o cantidad inválida', 'error'); return; }
+
+      const subtotal = docenas * precioDocena;
+
+      if (editingPedidoId) {
+        const o = state.pedidos.find(x => x.id === editingPedidoId);
+        if (o) {
+          o.docenas = docenas; o.precioDocena = precioDocena; o.subtotal = subtotal;
+          queueAction('add_pedido', { id: o.id, semana: week.semana, franquiciaAlias: o.franquiciaAlias, docenas, precioDocena, subtotal, cerrado: o.cerrado });
+        }
+      } else {
+        if (state.pedidos.some(p => p.semana === week.semana && p.franquiciaAlias === franquiciaAlias)) {
+          showToast('Esta franquicia ya tiene un pedido cargado esta semana', 'error'); return;
+        }
+        const id = genId();
+        state.pedidos.push({ id, semana: week.semana, franquiciaAlias, docenas, precioDocena, subtotal, cerrado: false });
+        queueAction('add_pedido', { id, semana: week.semana, franquiciaAlias, docenas, precioDocena, subtotal, cerrado: false });
+      }
+
+      saveDataLocal();
+      closeModal('modalPedido');
+      document.getElementById('fPedidoFranquicia').disabled = false;
+      renderWeekView();
+      showToast(editingPedidoId ? 'Pedido actualizado' : 'Pedido cargado ✓');
+    }
+
+    function deletePedido(id) {
+      if (!confirm('¿Eliminar este pedido?')) return;
+      state.pedidos = state.pedidos.filter(p => p.id !== id);
+      queueAction('delete_pedido', { id });
+      saveDataLocal();
+      renderWeekView();
+      showToast('Pedido eliminado', 'error');
+    }
+
+    // ===================== CIERRE SEMANAL =====================
+    let closingTempList = [];
+
+    function calcularCierreSemana() {
+      const week = state.semanas[selectedSemanaIndex];
+      if (!week) return;
+      
+      const orders = state.pedidos.filter(p => p.semana === week.semana);
+      if (orders.length === 0) { showToast('No hay pedidos cargados para calcular el cierre', 'error'); return; }
+
+      document.getElementById('semanaListView').style.display = 'none';
+      document.getElementById('semanaCierreView').style.display = 'block';
+      document.getElementById('closingPeriodLabel').textContent = `Período: Lun ${formatDateShort(week.fechaInicio)} – Dom ${formatDateShort(week.fechaFin)}`;
+
+      closingTempList = orders.map(o => {
+        const fran = state.franquicias.find(f => f.alias === o.franquiciaAlias);
+        const regaliaPct = fran ? fran.regalia : 0;
+        const montoCobrar = o.subtotal * (regaliaPct / 100);
+        return { franquiciaAlias: o.franquiciaAlias, docenas: o.docenas, subtotal: o.subtotal, regalia: regaliaPct, montoCobrar };
+      });
+
+      const totalCobrar = closingTempList.reduce((acc, item) => acc + item.montoCobrar, 0);
+      document.getElementById('totClosingCobrar').textContent = fmt(totalCobrar);
+
+      document.getElementById('closingTableBody').innerHTML = closingTempList.map(item => `
+        <tr>
+          <td><strong>${esc(item.franquiciaAlias)}</strong></td>
+          <td>${item.docenas} doc</td>
+          <td style="font-family:'Space Mono'">${fmt(item.subtotal)}</td>
+          <td>${item.regalia}%</td>
+          <td style="color:var(--accent-light);font-family:'Space Mono';font-weight:700">${fmt(item.montoCobrar)}</td>
+          <td><span class="pago-tipo-badge tipo-parcial">Pendiente</span></td>
+        </tr>
+      `).join('');
+    }
+
+    function backToWeekView() {
+      document.getElementById('semanaListView').style.display = 'block';
+      document.getElementById('semanaCierreView').style.display = 'none';
+      closingTempList = [];
+    }
+
+    function confirmarCierreSemana() {
+      if (!confirm('¿Confirmar el cierre semanal? Esto cargará la deuda a cada franquicia y la semana quedará inamovible.')) return;
+      const week = state.semanas[selectedSemanaIndex];
+      const fechaCierre = todayISO();
+      
+      closingTempList.forEach(item => {
+        const id = genId();
+        const movId = genId();
+        item.cierreId = id;
+        item.movId = movId;
+        state.cierres.push({ id, semana: week.semana, fechaCierre, franquiciaAlias: item.franquiciaAlias, docenas: item.docenas, totalFacturado: item.subtotal, regalia: item.regalia, montoCobrar: item.montoCobrar, estado: 'pendiente' });
+
+        const fran = state.franquicias.find(f => f.alias === item.franquiciaAlias);
+        if (fran) fran.deudaTotal += item.montoCobrar;
+
+        state.movimientos.push({
+          id: movId, fecha: fechaCierre, franquiciaAlias: item.franquiciaAlias, tipo: 'cierre',
+          monto: item.montoCobrar, pendiente: fran ? (fran.deudaTotal - fran.pagado) : item.montoCobrar,
+          observaciones: `Cierre semanal (${item.docenas} docenas, Regalía ${item.regalia}%)`
+        });
+      });
+
+      week.estado = 'cerrada';
+      state.pedidos.forEach(p => { if (p.semana === week.semana) p.cerrado = true; });
+
+      queueAction('close_semana', { semana: week.semana, fechaCierre, closures: closingTempList });
+      saveDataLocal();
+      showToast('Cierre confirmado y deudas registradas ✓', 'success');
+      renderWeekView();
+    }
+
+    // ===================== DEUDAS / MOVIMIENTOS =====================
+    function renderDeudasTab() {
+      const totalDeuda = state.franquicias.reduce((acc, f) => acc + Math.max(0, f.deudaTotal - f.pagado), 0);
+      const totalCobrado = state.franquicias.reduce((acc, f) => acc + f.pagado, 0);
+      const cantFranquicias = state.franquicias.filter(f => (f.deudaTotal - f.pagado) > 0).length;
+
+      document.getElementById('deudasSummaryGrid').innerHTML = `
+        <div class="summary-card"><div class="val val-red">${fmt(totalDeuda)}</div><div class="lbl">Cobros Pendientes</div></div>
+        <div class="summary-card"><div class="val val-green">${fmt(totalCobrado)}</div><div class="lbl">Cobros Registrados</div></div>
+        <div class="summary-card"><div class="val val-yellow">${cantFranquicias}</div><div class="lbl">Franquicias Deudoras</div></div>
+      `;
+
+      renderMovimientos();
+    }
+
+    function renderMovimientos() {
+      const q = document.getElementById('movSearch').value.toLowerCase();
+      const type = document.getElementById('movTypeFilter').value;
+
+      let list = state.movimientos.filter(m => {
+        const matchFran = (m.franquiciaAlias || '').toLowerCase().includes(q);
+        if (!matchFran) return false;
+        if (type === 'pago' && m.tipo !== 'pago') return false;
+        if (type === 'cierre' && m.tipo !== 'cierre') return false;
+        return true;
+      }).sort((a,b) => (b.fecha || '').localeCompare(a.fecha || ''));
+
+      const tbody = document.getElementById('movTableBody');
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:32px">Sin movimientos que coincidan</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(m => `
+        <tr>
+          <td>${fmtDate(m.fecha)}</td>
+          <td><strong>${esc(m.franquiciaAlias)}</strong></td>
+          <td>
+            <span class="pago-tipo-badge ${m.tipo === 'pago' ? 'tipo-total' : 'tipo-parcial'}">
+              ${m.tipo === 'pago' ? 'Cobro/Pago' : 'Cargo Deuda'}
+            </span>
+          </td>
+          <td style="font-family:'Space Mono';font-weight:700;color:${m.tipo === 'pago' ? 'var(--green)' : 'var(--red)'}">
+            ${m.tipo === 'pago' ? '-' : '+'}${fmt(m.monto)}
+          </td>
+          <td style="font-family:'Space Mono'">${fmt(m.pendiente)}</td>
+          <td>
+            ${esc(m.observaciones || '')}
+            ${m.comprobante ? `<br><a href="#" onclick="openLightboxImage('${m.comprobante}');return false;" style="color:var(--accent);text-decoration:none;font-size:10px">🖼️ Ver Comprobante</a>` : ''}
+          </td>
+          <td>
+            <button class="btn-icon btn-sm" onclick="deleteMovimiento('${m.id}')" title="Eliminar">🗑️</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function deleteMovimiento(id) {
+      if (!confirm('¿Seguro que deseas eliminar este movimiento?')) return;
+      const mov = state.movimientos.find(m => m.id === id);
+      if (!mov) return;
+      const fran = state.franquicias.find(f => f.alias === mov.franquiciaAlias);
+      if (fran) {
+        if (mov.tipo === 'pago') { fran.pagado = Math.max(0, fran.pagado - mov.monto); }
+        else { fran.deudaTotal = Math.max(0, fran.deudaTotal - mov.monto); }
+      }
+      state.movimientos = state.movimientos.filter(m => m.id !== id);
+      queueAction('delete_movimiento', { id });
+      saveDataLocal();
+      renderDeudasTab();
+      showToast('Movimiento eliminado', 'error');
+    }
+
+    function openMockPagoModal() {
+      if (state.franquicias.length === 0) { showToast('Cargá al menos una franquicia primero', 'error'); return; }
+      openPagoModal(state.franquicias[0].alias);
+    }
+
+    function openPagoModal(alias) {
+      const f = state.franquicias.find(x => x.alias === alias);
+      if (!f) return;
+      currentDetailFranchiseAlias = alias;
+
+      document.getElementById('pagoProvNombre').textContent = f.alias;
+      const pend = f.deudaTotal - f.pagado;
+      document.getElementById('pagoPending').textContent = fmt(pend);
+      document.getElementById('fPagoFecha').value = todayISO();
+      document.getElementById('fPagoTipo').value = 'parcial';
+      document.getElementById('fPagoMonto').value = (pend > 0 ? pend : 0).toLocaleString('es-AR', { maximumFractionDigits: 2 });
+      document.getElementById('fPagoObs').value = '';
+      document.getElementById('filePreview').innerHTML = '';
+      pendingFileBase64 = null;
+      pendingFileName = '';
+      document.getElementById('modalPago').classList.add('open');
+    }
+
+    function onPagoTipoChange() {
+      const tipo = document.getElementById('fPagoTipo').value;
+      const f = state.franquicias.find(x => x.alias === currentDetailFranchiseAlias);
+      if (!f) return;
+      if (tipo === 'total') document.getElementById('fPagoMonto').value = Math.max(0, f.deudaTotal - f.pagado).toLocaleString('es-AR', { maximumFractionDigits: 2 });
+    }
+
+    function handlePagoFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      pendingFileName = file.name;
+      const reader = new FileReader();
+      reader.onload = e => {
+        pendingFileBase64 = e.target.result;
+        document.getElementById('filePreview').innerHTML = `
+          <div class="file-preview-item">
+            <img src="${pendingFileBase64}">
+            <div class="fp-name">${esc(file.name)}</div>
+            <button class="fp-remove" onclick="removePendingFile()">×</button>
+          </div>
+        `;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removePendingFile() {
+      pendingFileBase64 = null; pendingFileName = '';
+      document.getElementById('filePreview').innerHTML = '';
+      document.getElementById('fPagoFile').value = '';
+    }
+
+    async function savePago() {
+      const f = state.franquicias.find(x => x.alias === currentDetailFranchiseAlias);
+      if (!f) return;
+
+      const fecha = document.getElementById('fPagoFecha').value;
+      const monto = parseMonto(document.getElementById('fPagoMonto').value);
+      const obs = document.getElementById('fPagoObs').value.trim();
+
+      if (!fecha || monto <= 0) { showToast('Monto o fecha inválidos', 'error'); return; }
+
+      const movId = genId();
+      let comprobanteUrl = '';
+      if (pendingFileBase64) {
+        showToast("Subiendo comprobante...");
+        comprobanteUrl = await uploadFileToR2(movId, pendingFileBase64, pendingFileName, 'image/png');
+      }
+
+      f.pagado += monto;
+      const pend = f.deudaTotal - f.pagado;
+
+      state.movimientos.push({
+        id: movId, fecha, franquiciaAlias: f.alias, tipo: 'pago', monto,
+        pendiente: pend, comprobante: comprobanteUrl,
+        observaciones: obs || 'Pago registrado sin referencias bancarias'
+      });
+
+      queueAction('register_payment', {
+        id: movId, fecha, franquiciaAlias: f.alias, monto, pendiente: pend,
+        comprobanteUrl, observaciones: obs || 'Pago registrado sin referencias bancarias'
+      });
+
+      saveDataLocal();
+      closeModal('modalPago');
+      
+      if (document.getElementById('sec-deudas').classList.contains('active')) {
+        renderDeudasTab();
+      } else {
+        renderAll();
+        if (currentDetailFranchiseAlias) showDetail(f.alias);
+      }
+      showToast('Cobro registrado ✓');
+    }
+
+    // ===================== REPORTES =====================
+    function renderReportesTab() {
+      const tbody = document.getElementById('reportsHistoryTableBody');
+      const weeks = [...state.semanas].sort((a,b) => b.semana.localeCompare(a.semana));
+
+      tbody.innerHTML = weeks.map(w => {
+        const orders = state.pedidos.filter(p => p.semana === w.semana);
+        const totalFact = orders.reduce((acc, o) => acc + o.subtotal, 0);
+        const totalRoyalties = orders.reduce((acc, o) => {
+          const fran = state.franquicias.find(f => f.alias === o.franquiciaAlias);
+          return acc + (o.subtotal * ((fran ? fran.regalia : 10) / 100));
+        }, 0);
+
+        return `
+          <tr>
+            <td><strong>Lun ${formatDateShort(w.fechaInicio)} – Dom ${formatDateShort(w.fechaFin)}</strong></td>
+            <td style="font-family:'Space Mono'">${fmt(totalFact)}</td>
+            <td style="color:var(--accent-light);font-family:'Space Mono';font-weight:700">${fmt(totalRoyalties)}</td>
+            <td><span class="prov-badge ${w.estado === 'cerrada' ? 'badge-dia' : 'badge-deuda'}">${w.estado === 'cerrada' ? 'Cerrada' : 'Abierta'}</span></td>
+          </tr>
+        `;
+      }).join('');
+
+      renderSVGChart();
+    }
+
+    function renderSVGChart() {
+      const docenasMap = {};
+      state.franquicias.forEach(f => { docenasMap[f.alias] = 0; });
+      state.pedidos.forEach(p => {
+        if (docenasMap[p.franquiciaAlias] !== undefined) docenasMap[p.franquiciaAlias] += p.docenas;
+      });
+
+      const data = Object.keys(docenasMap).map(alias => ({ alias, docenas: docenasMap[alias] }));
+      // BUG #16 CORREGIDO: Si no hay datos, evitar NaN en el gráfico
+      if (data.length === 0) {
+        document.getElementById('svgChartContainer').innerHTML = '<p style="color:var(--muted);font-size:13px">Sin datos para mostrar.</p>';
+        return;
+      }
+
+      const maxVal = Math.max(...data.map(d => d.docenas), 1);
+      const width = 600, height = 220, padding = 30;
+      const chartWidth = width - padding * 2, chartHeight = height - padding * 2;
+      const barWidth = Math.max(10, chartWidth / data.length - 10);
+
+      const barsHTML = data.map((d, i) => {
+        const barHeight = Math.max(2, (d.docenas / maxVal) * chartHeight);
+        const x = padding + i * (chartWidth / data.length) + 5;
+        const y = height - padding - barHeight;
+        return `
+          <g>
+            <rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" fill="url(#barGradient)" rx="4" ry="4"></rect>
+            <text x="${x + barWidth/2}" y="${height - 10}" fill="var(--text-secondary)" font-size="9" text-anchor="middle" font-weight="600">${esc(d.alias)}</text>
+            <text x="${x + barWidth/2}" y="${y - 8}" fill="var(--text)" font-size="9" text-anchor="middle" font-family="'Space Mono'">${d.docenas.toFixed(0)} doc</text>
+          </g>
+        `;
+      }).join('');
+
+      document.getElementById('svgChartContainer').innerHTML = `
+        <svg viewBox="0 0 ${width} ${height}" style="width:100%; height:100%">
+          <defs>
+            <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--accent-light)" />
+              <stop offset="100%" stop-color="var(--accent)" />
+            </linearGradient>
+          </defs>
+          <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" stroke="var(--border)" stroke-width="1"></line>
+          ${barsHTML}
+        </svg>
+      `;
+    }
+
+    // ===================== EXPORTACIÓN EXCEL =====================
+    function formatDateShort(dateStr) {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-');
+      if (parts.length < 3) return dateStr;
+      return `${parts[2]}/${parts[1]}`;
+    }
+
+    function exportXmlTable(headers, rows, sheetName, filename) {
+      let xml = `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Styles>
+  <Style ss:ID="Default"><Font ss:FontName="Calibri" ss:Size="11"/></Style>
+  <Style ss:ID="Header"><Font ss:FontName="Calibri" ss:Size="11" ss:Color="#FFFFFF" ss:Bold="1"/><Interior ss:Color="#1C2030" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="EvenRow"><Interior ss:Color="#F3F4F6" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="Currency"><NumberFormat ss:Format="$#,##0"/></Style>
+  <Style ss:ID="CurrencyEven"><Interior ss:Color="#F3F4F6" ss:Pattern="Solid"/><NumberFormat ss:Format="$#,##0"/></Style>
+ </Styles>
+ <Worksheet ss:Name="${sheetName}">
+  <Table>`;
+      
+      xml += '\n   <Row ss:Height="25">';
+      headers.forEach(h => { xml += `\n    <Cell ss:StyleID="Header"><Data ss:Type="String">${h}</Data></Cell>`; });
+      xml += '\n   </Row>';
+      
+      rows.forEach((r, idx) => {
+        const isEven = idx % 2 === 0;
+        xml += `\n   <Row${isEven ? ' ss:StyleID="EvenRow"' : ''} ss:Height="20">`;
+        r.forEach(cell => {
+          let type = 'String', styleAttr = '';
+          if (typeof cell.value === 'number') {
+            type = 'Number';
+            if (cell.isCurrency) styleAttr = isEven ? ' ss:StyleID="CurrencyEven"' : ' ss:StyleID="Currency"';
+          }
+          xml += `\n    <Cell${styleAttr}><Data ss:Type="${type}">${cell.value}</Data></Cell>`;
+        });
+        xml += '\n   </Row>';
+      });
+      
+      xml += `\n  </Table>\n </Worksheet>\n</Workbook>`;
+
+      const blob = new Blob([xml], { type: 'application/vnd.ms-excel' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      // BUG #16b CORREGIDO: revocar el object URL para no fugar memoria
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    }
+
+    function exportClosingExcel() {
+      const week = state.semanas[selectedSemanaIndex];
+      if (!week) return;
+      const headers = ['Franquicia', 'Docenas', 'Total Facturado', '% Regalía', 'Monto a Cobrar', 'Estado'];
+      const rows = closingTempList.map(item => [
+        { value: item.franquiciaAlias }, { value: item.docenas },
+        { value: item.subtotal, isCurrency: true }, { value: item.regalia },
+        { value: item.montoCobrar, isCurrency: true }, { value: 'Pendiente' }
+      ]);
+      exportXmlTable(headers, rows, 'Cierre Semanal', `emapro-cierre-semana-${week.semana}.xls`);
+      showToast('Excel descargado con estilos ✓');
+    }
+
+    function exportMovementsExcel() {
+      const headers = ['Fecha', 'Franquicia', 'Tipo', 'Monto', 'Pendiente', 'Observaciones'];
+      const rows = state.movimientos.map(m => [
+        { value: fmtDate(m.fecha) }, { value: m.franquiciaAlias },
+        { value: m.tipo === 'pago' ? 'Cobro/Pago' : 'Cargo Cierre' },
+        { value: m.monto, isCurrency: true }, { value: m.pendiente, isCurrency: true },
+        { value: m.observaciones }
+      ]);
+      exportXmlTable(headers, rows, 'Movimientos', `emapro-movimientos-${todayISO()}.xls`);
+      showToast('Excel de movimientos descargado ✓');
+    }
+
+    // ===================== CONFIG TAB =====================
+    function renderConfigTab() {
+      const cfgMap = {
+        'cfgSheetUrl': 'empapro_cfg_sheet_url',
+        'cfgSheetToken': 'empapro_cfg_sheet_token',
+        'cfgNeonConn': 'empapro_cfg_neon_conn',
+        'cfgR2AccId': 'empapro_cfg_r2_acc_id',
+        'cfgR2Key': 'empapro_cfg_r2_key',
+        'cfgR2Secret': 'empapro_cfg_r2_secret',
+        'cfgR2Bucket': 'empapro_cfg_r2_bucket',
+        'cfgR2Domain': 'empapro_cfg_r2_domain'
+      };
+      Object.entries(cfgMap).forEach(([id, key]) => {
+        document.getElementById(id).value = localStorage.getItem(key) || '';
+      });
+
+      document.getElementById('cfgFranchiseList').innerHTML = state.franquicias.map(f => `
+        <div class="dash-pago-item" style="cursor:default">
+          <div class="dash-pago-left">
+            <div class="dash-pago-prov">${esc(f.alias)}</div>
+            <div class="dash-pago-date">Regalía: ${f.regalia}% · Tel: ${esc(f.telefono || '–')}</div>
+          </div>
+          <button class="btn btn-sm btn-secondary" onclick="openEditFranquicia('${esc(f.alias)}')">Editar</button>
+        </div>
+      `).join('');
+    }
+
+    function updateStatusDisplay() {
+      const ns = document.getElementById('netStatusVal');
+      const qc = document.getElementById('queueCountVal');
+      if (ns) ns.textContent = navigator.onLine ? 'Conectado (Online)' : 'Sin conexión (Offline)';
+      if (qc) qc.textContent = `${syncQueue.length} acciones pendientes`;
+    }
+
+    // ===================== LIGHTBOX =====================
+    async function openLightboxImage(src) {
+      if (!src) return;
+      const imgEl = document.getElementById('lightboxImg');
+      if (src.startsWith('local://')) {
+        const localId = src.substring(8);
+        const fileData = await getFileOffline(localId);
+        imgEl.src = fileData ? fileData.base64 : '';
+      } else {
+        imgEl.src = src;
+      }
+      document.getElementById('lightbox').classList.add('open');
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('open');
+      document.getElementById('lightboxImg').src = '';
+    }
+
+    function downloadLightbox() {
+      const src = document.getElementById('lightboxImg').src;
+      if (!src) return;
+      const a = document.createElement('a');
+      a.href = src; a.download = `comprobante-${todayISO()}.png`; a.click();
+    }
+
+    // ===================== MODALES =====================
+    function openModal(id) {
+      if (id === 'prov') {
+        document.getElementById('modalProvTitle').textContent = 'Nueva Franquicia';
+        document.getElementById('fProvAlias').value = '';
+        document.getElementById('fProvAlias').disabled = false;
+        document.getElementById('fProvNombre').value = '';
+        document.getElementById('fProvDeudaTotal').value = '';
+        document.getElementById('fProvFechaAlta').value = todayISO();
+        document.getElementById('rowDeudaFecha').style.display = '';
+        document.getElementById('fProvRegalia').value = '10';
+        document.getElementById('fProvTel').value = '';
+        document.getElementById('fProvEmail').value = '';
+        document.getElementById('fProvObs').value = '';
+        document.getElementById('modalProv').classList.add('open');
+      }
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    document.querySelectorAll('.modal-overlay').forEach(m => {
+      m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+    });
+
+    // PWA Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('SW Registered', reg.scope))
+          .catch(err => console.error('SW Error', err));
+      });
+    }
+
+    window.addEventListener('online', () => {
+      showToast('Conexión a Internet restablecida.');
+      updateStatusDisplay();
+      if (dbSql) connectToNeon();
+    });
+    window.addEventListener('offline', () => {
+      showToast('Modo sin conexión activado.', 'error');
+      updateStatusDisplay();
+    });
+  </script>
+</body>
+</html>
