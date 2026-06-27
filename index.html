@@ -963,6 +963,16 @@
               </table>
             </div>
           </div>
+
+          <!-- Banner sugerencia de cierre — reemplaza el auto-cierre que cerraba la semana solo -->
+          <div id="sdSugerenciaCierre" style="display:none;margin-top:16px;background:rgba(99,102,241,.12);border:1px solid var(--accent);border-radius:var(--radius);padding:14px 16px;align-items:center;gap:12px;flex-wrap:wrap">
+            <div style="font-size:20px">🎉</div>
+            <div style="flex:1;min-width:160px">
+              <div style="font-size:13px;font-weight:800;color:var(--text)">¡Semana completa!</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">Todos los días tienen pedidos. Podés calcular el cierre cuando estés listo.</div>
+            </div>
+            <button class="btn btn-sm" onclick="calcularCierreDesdeBanner()" style="white-space:nowrap">📊 Calcular Cierre</button>
+          </div>
         </div>
 
         <!-- ── VISTA: Cierre de semana (se mantiene para flujo existente) ── -->
@@ -3586,9 +3596,15 @@
       const sdFac = document.getElementById('sdTotalFac'); if (sdFac) sdFac.textContent = fmt(totalFac);
       const sdReg = document.getElementById('sdTotalReg'); if (sdReg) sdReg.textContent = fmt(totalReg);
 
-      // Auto-cierre si 6 días completos y semana abierta
+      // Sugerencia de cierre si 6 días completos y semana abierta
+      // BUG CORREGIDO: antes disparaba el cierre automáticamente sin confirmación,
+      // cerrando la semana al cargar el último día aunque el usuario no lo pidiera.
+      // Ahora solo muestra un banner de sugerencia — el cierre sigue siendo manual.
+      const bannerEl = document.getElementById('sdSugerenciaCierre');
       if (diasConPedido === 6 && w && w.estado !== 'cerrada') {
-        setTimeout(() => triggerAutoCierre(currentSemanaKey), 400);
+        if (bannerEl) bannerEl.style.display = 'flex';
+      } else {
+        if (bannerEl) bannerEl.style.display = 'none';
       }
     }
 
@@ -3857,15 +3873,26 @@
       wrap.style.display = 'block';
     }
 
-    // ── Auto-cierre al completar 6 días ──
+    // ── triggerAutoCierre: deshabilitado — el cierre es siempre manual ──
+    // BUG CORREGIDO: antes cerraba la semana automáticamente al cargar el 6° día,
+    // sin confirmación explícita del usuario. Reemplazado por banner (sdSugerenciaCierre).
     async function triggerAutoCierre(semanaKey) {
-      const w = state.semanas.find(s => s.semana === semanaKey);
-      if (!w || w.estado === 'cerrada') return;
-      showToast('🎉 Semana completa — generando cierre automático...');
-      selectedSemanaIndex = state.semanas.findIndex(s => s.semana === semanaKey);
-      // Pequeño delay para que el toast se vea
-      await new Promise(r => setTimeout(r, 800));
-      calcularCierreSemana();  // usa el flujo existente de cierre
+      // no-op: el banner en renderDiasGrid() ya informa al usuario
+    }
+
+    // ── Banner de sugerencia de cierre ──
+    function calcularCierreDesdeBanner() {
+      if (!currentSemanaKey) return;
+      selectedSemanaIndex = state.semanas.findIndex(s => s.semana === currentSemanaKey);
+      document.getElementById('semanaListView').style.display = 'none';
+      document.getElementById('semanaDiariaView').style.display = 'none';
+      document.getElementById('semanaCierreView').style.display = 'block';
+      const week = state.semanas[selectedSemanaIndex];
+      if (week) {
+        document.getElementById('closingPeriodLabel').textContent =
+          `Período: Lun ${formatDateShort(week.fechaInicio)} – Dom ${formatDateShort(week.fechaFin)}`;
+      }
+      calcularCierreSemana();
     }
 
     // ── Editar pedido diario ──
