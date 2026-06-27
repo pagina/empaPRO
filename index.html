@@ -1231,8 +1231,12 @@
     import { S3Client, PutObjectCommand } from 'https://esm.sh/@aws-sdk/client-s3';
 
     window.neon = neon;
-    window.S3Client = S3Client;
-    window.PutObjectCommand = PutObjectCommand;
+
+    // Exponemos factory functions en vez de las clases directamente.
+    // Pasar una clase ES module por window rompe su contexto interno
+    // y el constructor falla con "S3Client is not a function".
+    window.createS3Client = (config) => new S3Client(config);
+    window.createPutObjectCommand = (input) => new PutObjectCommand(input);
     
     // FIX race condition: marcar flag antes de disparar el evento
     // para que el listener del script clásico lo detecte si llegó tarde
@@ -1587,9 +1591,9 @@
       const r2Key = localStorage.getItem('empapro_cfg_r2_key') || '';
       const r2Secret = localStorage.getItem('empapro_cfg_r2_secret') || '';
       
-      if (r2AccId && r2Key && r2Secret && window.S3Client) {
+      if (r2AccId && r2Key && r2Secret && window.createS3Client) {
         try {
-          s3Client = new window.S3Client({
+          s3Client = window.createS3Client({
             endpoint: `https://${r2AccId}.r2.cloudflarestorage.com`,
             credentials: { accessKeyId: r2Key, secretAccessKey: r2Secret },
             region: 'auto'
@@ -1621,7 +1625,7 @@
         const ext = name.split('.').pop() || 'png';
         const key = `comprobantes/${id}.${ext}`;
 
-        await s3Client.send(new window.PutObjectCommand({ Bucket: bucketName, Key: key, Body: bytes, ContentType: mimeType }));
+        await s3Client.send(window.createPutObjectCommand({ Bucket: bucketName, Key: key, Body: bytes, ContentType: mimeType }));
         
         const fileUrl = publicDomain 
           ? `${publicDomain.replace(/\/$/, '')}/${key}`
