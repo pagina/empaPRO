@@ -492,6 +492,28 @@
     .sync-dot.offline { background: var(--yellow); }
     @keyframes pulse-sync { 0%,100% { transform: scale(.85); opacity: .6; } 50% { transform: scale(1.3); opacity: 1; } }
 
+    /* ======================== CALENDAR ======================== */
+    .cal-cell {
+      min-height: 72px; padding: 6px; border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border); position: relative;
+      transition: background var(--transition);
+    }
+    .cal-cell:nth-child(7n) { border-right: none; }
+    .cal-cell.other-month { opacity: .35; pointer-events: none; }
+    .cal-cell.today-cell .cal-day-num { background: var(--accent); color: #fff; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
+    .cal-day-num { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
+    .cal-week-chip {
+      border-radius: 6px; padding: 3px 5px; font-size: 9px; font-weight: 700;
+      cursor: pointer; line-height: 1.3; transition: opacity var(--transition);
+      border: 1px solid transparent;
+    }
+    .cal-week-chip:hover { opacity: .8; }
+    .cal-week-chip.chip-open { background: var(--accent-dim); border-color: var(--accent); color: var(--accent-light); }
+    .cal-week-chip.chip-closed { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+    .cal-week-chip.chip-lunes { border-radius: 6px 0 0 6px; }
+    .cal-week-chip.chip-mid { border-radius: 0; border-left: none; }
+    .cal-week-chip.chip-domingo { border-radius: 0 6px 6px 0; border-left: none; }
+
     /* ======================== CONFIG ======================== */
     .config-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
     .config-title { font-size: 16px; font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
@@ -688,41 +710,46 @@
       <div class="section" id="sec-cierre">
         <div id="semanaListView">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
-            <h2 style="font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-secondary)">Semanas de Cierre</h2>
+            <h2 style="font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-secondary)">Cobro Semanal</h2>
             <button class="btn btn-sm" onclick="openCreateSemanaModal()">➕ Nueva Semana</button>
           </div>
-          
-          <div class="toolbar" style="justify-content:space-between;background:var(--surface);border:1px solid var(--border);padding:10px 14px;border-radius:var(--radius);margin-bottom:15px">
-            <button class="btn btn-secondary btn-sm" onclick="navigateWeek(-1)">← Anterior</button>
-            <div id="currentWeekRange" style="font-family:'Space Mono',monospace;font-weight:700;font-size:14px;color:var(--accent-light)">-</div>
-            <button class="btn btn-secondary btn-sm" onclick="navigateWeek(1)">Siguiente →</button>
+
+          <!-- Navegación de mes -->
+          <div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:12px">
+            <button class="btn btn-secondary btn-sm" onclick="calNavMonth(-1)">← Anterior</button>
+            <div id="calMonthLabel" style="font-family:'Space Mono',monospace;font-weight:700;font-size:14px;color:var(--accent-light);text-transform:uppercase;letter-spacing:.5px">-</div>
+            <button class="btn btn-secondary btn-sm" onclick="calNavMonth(1)">Siguiente →</button>
           </div>
 
-          <div class="sync-status-box" id="selectedSemanaCard" style="margin-top:0;margin-bottom:20px;cursor:pointer" onclick="viewSelectedSemanaPedidos()">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div>
-                <div class="sync-status-title" style="margin-bottom:2px" id="weekStatusTitle">Semana Seleccionada</div>
-                <div style="font-size:12px;color:var(--muted)" id="weekStatusDetails">Métricas de la semana</div>
-              </div>
-              <span class="prov-badge" id="weekStatusBadge">Abierta</span>
+          <!-- Grilla calendario -->
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px">
+            <!-- Cabecera días -->
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)">
+              <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:8px 0;text-transform:uppercase;letter-spacing:.5px">Lun</div>
+              <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:8px 0;text-transform:uppercase;letter-spacing:.5px">Mar</div>
+              <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:8px 0;text-transform:uppercase;letter-spacing:.5px">Mié</div>
+              <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:8px 0;text-transform:uppercase;letter-spacing:.5px">Jue</div>
+              <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:8px 0;text-transform:uppercase;letter-spacing:.5px">Vie</div>
+              <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:8px 0;text-transform:uppercase;letter-spacing:.5px">Sáb</div>
+              <div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:8px 0;text-transform:uppercase;letter-spacing:.5px">Dom</div>
             </div>
+            <!-- Celdas generadas por JS -->
+            <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr)"></div>
           </div>
 
-          <div class="section-title">Pedidos cargados para la semana seleccionada</div>
-
-          <!-- BUG #3 CORREGIDO: Botón "Cargar Pedido" añadido correctamente en la vista de semana -->
-          <div style="margin-bottom:10px">
-            <button class="btn btn-sm" id="btnNuevoPedido" onclick="openPedidoModal()">➕ Cargar Pedido</button>
-          </div>
-
-          <div id="weeklyOrdersList" class="prov-list" style="margin-bottom:15px"></div>
-          
-          <div class="toolbar" style="justify-content:space-between;background:var(--surface);border:1px solid var(--border);padding:14px;border-radius:var(--radius)" id="weeklyTotalsBar">
-            <div style="font-size:13px;font-weight:600">Total docenas: <span id="totWeekDocenas" style="font-family:'Space Mono';font-weight:800;color:var(--accent-light)">0</span></div>
-            <div style="font-size:13px;font-weight:600">Total facturado: <span id="totWeekFacturado" style="font-family:'Space Mono';font-weight:800;color:var(--green)">$0</span></div>
-            <button class="btn" id="btnCalcularCierre" onclick="calcularCierreSemana()">Calcular Cierre</button>
+          <!-- Leyenda -->
+          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:6px">
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)"><span style="width:10px;height:10px;border-radius:2px;background:var(--accent-dim);border:1px solid var(--accent);display:inline-block"></span>Semana abierta</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)"><span style="width:10px;height:10px;border-radius:2px;background:var(--green-dim);border:1px solid var(--green);display:inline-block"></span>Semana cerrada</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)"><span style="width:10px;height:10px;border-radius:2px;background:var(--surface3);display:inline-block"></span>Sin semana</div>
           </div>
         </div>
+
+        <!-- Hidden inputs needed by calcularCierreSemana / confirmarCierreSemana — keep IDs intact -->
+        <span id="btnNuevoPedido" style="display:none"></span>
+        <span id="totWeekDocenas" style="display:none">0</span>
+        <span id="totWeekFacturado" style="display:none">$0</span>
+        <button id="btnCalcularCierre" style="display:none" onclick="calcularCierreSemana()"></button>
 
         <div id="semanaCierreView" style="display:none">
           <div class="detail-header">
@@ -1034,6 +1061,61 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal('modalPedido')">Cancelar</button>
         <button class="btn" onclick="savePedido()">Cargar Pedido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Detalle Semana (calendario) -->
+  <div class="modal-overlay" id="modalDetalleSemana">
+    <div class="modal" style="max-width:620px">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="detSemanaTitle">Semana</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px" id="detSemanaSubtitle"></div>
+        </div>
+        <button class="btn-close" onclick="closeModal('modalDetalleSemana')">×</button>
+      </div>
+
+      <!-- Resumen rápido -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;text-align:center">
+          <div id="detSemDocenas" style="font-family:'Space Mono';font-size:18px;font-weight:800;color:var(--accent-light)">0</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Docenas</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;text-align:center">
+          <div id="detSemFacturado" style="font-family:'Space Mono';font-size:18px;font-weight:800;color:var(--green)">$0</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Facturado</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;text-align:center">
+          <div id="detSemRegalia" style="font-family:'Space Mono';font-size:18px;font-weight:800;color:var(--yellow)">$0</div>
+          <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Regalías</div>
+        </div>
+      </div>
+
+      <!-- Pedidos de la semana -->
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Pedidos cargados</div>
+      <div id="detSemPedidosList" style="margin-bottom:16px"></div>
+
+      <!-- Cierres si la semana está cerrada -->
+      <div id="detSemCierreWrap" style="display:none">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Detalle de regalías por franquicia</div>
+        <div class="table-wrap" style="margin-bottom:14px">
+          <table class="mov-table">
+            <thead>
+              <tr>
+                <th>Franquicia</th><th>Docenas</th><th>Facturado</th><th>% Reg.</th><th>A Cobrar</th><th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="detSemCierreTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Acciones -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap" id="detSemActions">
+        <button class="btn btn-sm" id="detBtnCargarPedido" onclick="detModalCargarPedido()" style="flex:1;justify-content:center">➕ Cargar Pedido</button>
+        <button class="btn btn-sm" id="detBtnCierre" onclick="detModalCalcularCierre()" style="flex:1;justify-content:center">📊 Calcular Cierre</button>
+        <button class="btn btn-secondary btn-sm" onclick="detModalExportarExcel()" style="flex:1;justify-content:center">📥 Exportar Excel</button>
       </div>
     </div>
   </div>
@@ -2213,95 +2295,184 @@
       showToast('Deuda ajustada ✓');
     }
 
-    // ===================== COBRO SEMANAL =====================
+    // ===================== CALENDARIO MENSUAL =====================
+    let calYear = new Date().getFullYear();
+    let calMonth = new Date().getMonth(); // 0-indexed
+
+    const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
     function renderWeekView() {
-      const week = state.semanas[selectedSemanaIndex];
-      
       document.getElementById('semanaListView').style.display = 'block';
       document.getElementById('semanaCierreView').style.display = 'none';
+      renderCalendar();
+    }
 
-      // BUG #14 CORREGIDO: Si no hay semanas, mostrar estado vacío en lugar de crashear
-      if (!week) {
-        document.getElementById('currentWeekRange').textContent = 'Sin semanas creadas';
-        document.getElementById('weekStatusTitle').textContent = 'No hay semanas';
-        document.getElementById('weekStatusDetails').textContent = 'Creá una nueva semana para empezar';
-        document.getElementById('weekStatusBadge').textContent = '–';
-        document.getElementById('weeklyOrdersList').innerHTML = `
-          <div class="empty-state" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
-            <div class="empty-state-text">No hay semanas creadas aún.</div>
-            <button class="btn btn-sm btn-secondary" style="margin-top:10px" onclick="openCreateSemanaModal()">Crear primera semana</button>
-          </div>
-        `;
-        document.getElementById('btnNuevoPedido').style.display = 'none';
-        document.getElementById('btnCalcularCierre').disabled = true;
-        return;
+    function viewSelectedSemanaPedidos() { /* no-op, kept for compatibility */ }
+
+    function calNavMonth(dir) {
+      calMonth += dir;
+      if (calMonth > 11) { calMonth = 0; calYear++; }
+      if (calMonth < 0) { calMonth = 11; calYear--; }
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      document.getElementById('calMonthLabel').textContent = `${MESES[calMonth]} ${calYear}`;
+
+      const today = todayISO();
+      const firstDay = new Date(calYear, calMonth, 1);
+      const lastDay = new Date(calYear, calMonth + 1, 0);
+
+      // Lunes=0 offset para la grilla
+      let startDow = firstDay.getDay(); // 0=Dom
+      startDow = startDow === 0 ? 6 : startDow - 1; // convertir a lunes=0
+
+      const totalCells = Math.ceil((startDow + lastDay.getDate()) / 7) * 7;
+      const grid = document.getElementById('calGrid');
+      grid.innerHTML = '';
+
+      // Construir un mapa de qué semana cae en qué día
+      const weekByDate = {};
+      state.semanas.forEach(w => {
+        const start = new Date(w.fechaInicio + 'T12:00:00');
+        const end   = new Date(w.fechaFin   + 'T12:00:00');
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          weekByDate[d.toISOString().slice(0,10)] = w;
+        }
+      });
+
+      for (let i = 0; i < totalCells; i++) {
+        const dayOffset = i - startDow + 1;
+        const cellDate = new Date(calYear, calMonth, dayOffset);
+        const dateStr  = cellDate.toISOString().slice(0,10);
+        const isThisMonth = cellDate.getMonth() === calMonth;
+        const isToday  = dateStr === today;
+        const dow      = cellDate.getDay(); // 0=Dom,1=Lun,...,6=Sáb → en nuestro grid col 0=Lun
+        const colInWeek = dow === 0 ? 6 : dow - 1; // 0=Lun, 6=Dom
+
+        const cell = document.createElement('div');
+        cell.className = `cal-cell${!isThisMonth ? ' other-month' : ''}${isToday ? ' today-cell' : ''}`;
+
+        const dayNum = document.createElement('div');
+        dayNum.className = 'cal-day-num';
+        dayNum.textContent = cellDate.getDate();
+        cell.appendChild(dayNum);
+
+        const week = weekByDate[dateStr];
+        if (week && isThisMonth) {
+          const chip = document.createElement('div');
+          const isClosed = week.estado === 'cerrada';
+          let posClass = '';
+          if (colInWeek === 0) posClass = 'chip-lunes';
+          else if (colInWeek === 6) posClass = 'chip-domingo';
+          else posClass = 'chip-mid';
+          chip.className = `cal-week-chip ${isClosed ? 'chip-closed' : 'chip-open'} ${posClass}`;
+
+          // Solo en lunes y domingo mostrar texto, en el medio vacío para efecto de barra
+          if (colInWeek === 0) chip.textContent = isClosed ? '✓ Cerrada' : '● Abierta';
+          else if (colInWeek === 6) chip.textContent = 'cierre';
+          else chip.innerHTML = '&nbsp;';
+
+          chip.onclick = () => openDetalleSemana(week.semana);
+          cell.appendChild(chip);
+        }
+
+        grid.appendChild(cell);
       }
+    }
 
-      document.getElementById('btnNuevoPedido').style.display = '';
-      document.getElementById('currentWeekRange').textContent = `Lun ${formatDateShort(week.fechaInicio)} – Dom ${formatDateShort(week.fechaFin)}`;
-      
-      const badge = document.getElementById('weekStatusBadge');
-      badge.textContent = week.estado === 'cerrada' ? 'Cerrada' : 'Abierta';
-      badge.className = `prov-badge ${week.estado === 'cerrada' ? 'badge-dia' : 'badge-deuda'}`;
+    // ---- Modal detalle semana ----
+    let detalleSemanaKey = null;
 
-      document.getElementById('weekStatusTitle').textContent = `Semana del ${fmtDate(week.fechaInicio)} al ${fmtDate(week.fechaFin)}`;
-      
-      const orders = state.pedidos.filter(p => p.semana === week.semana);
-      const totalDocenas = orders.reduce((acc, o) => acc + o.docenas, 0);
-      const totalFacturado = orders.reduce((acc, o) => acc + o.subtotal, 0);
+    function openDetalleSemana(semanaKey) {
+      detalleSemanaKey = semanaKey;
+      const week = state.semanas.find(w => w.semana === semanaKey);
+      if (!week) return;
 
-      document.getElementById('weekStatusDetails').textContent = `Estado: ${week.estado === 'cerrada' ? 'Cierre procesado' : 'Abierta para edición'} · ${orders.length} pedidos registrados.`;
-      document.getElementById('totWeekDocenas').textContent = totalDocenas.toFixed(1);
-      document.getElementById('totWeekFacturado').textContent = fmt(totalFacturado);
+      const isClosed = week.estado === 'cerrada';
+      const orders   = state.pedidos.filter(p => p.semana === semanaKey);
+      const totalDoc = orders.reduce((a,o) => a + o.docenas, 0);
+      const totalFac = orders.reduce((a,o) => a + o.subtotal, 0);
 
-      const btnCierre = document.getElementById('btnCalcularCierre');
-      btnCierre.disabled = week.estado === 'cerrada';
-      btnCierre.textContent = week.estado === 'cerrada' ? 'Semana Cerrada' : 'Calcular Cierre';
+      // Calcular regalías estimadas
+      let totalReg = 0;
+      orders.forEach(o => {
+        const f = state.franquicias.find(f => f.alias === o.franquiciaAlias);
+        if (f) totalReg += o.subtotal * (f.regalia / 100);
+      });
 
-      const listEl = document.getElementById('weeklyOrdersList');
+      document.getElementById('detSemanaTitle').textContent = `Semana ${formatDateShort(week.fechaInicio)} — ${formatDateShort(week.fechaFin)}`;
+      document.getElementById('detSemanaSubtitle').textContent = isClosed ? '✅ Semana cerrada' : '🟡 Semana abierta';
+      document.getElementById('detSemDocenas').textContent = totalDoc.toFixed(1);
+      document.getElementById('detSemFacturado').textContent = fmt(totalFac);
+      document.getElementById('detSemRegalia').textContent = fmt(totalReg);
+
+      // Seleccionar semana activa para que funcionen los modales de pedido/cierre
+      selectedSemanaIndex = state.semanas.findIndex(w => w.semana === semanaKey);
+
+      // Lista de pedidos
+      const listEl = document.getElementById('detSemPedidosList');
       if (orders.length === 0) {
-        listEl.innerHTML = `
-          <div class="empty-state" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)">
-            <div class="empty-state-text">No hay pedidos cargados en esta semana.</div>
-          </div>
-        `;
-        return;
-      }
-
-      listEl.innerHTML = orders.map(o => {
-        const isClosed = o.cerrado || week.estado === 'cerrada';
-        return `
-          <div class="dash-pago-item" style="cursor:default">
+        listEl.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">No hay pedidos cargados en esta semana.</div>`;
+      } else {
+        listEl.innerHTML = orders.map(o => `
+          <div class="dash-pago-item" style="cursor:default;margin-bottom:6px">
             <div class="dash-pago-left">
               <div class="dash-pago-prov">${esc(o.franquiciaAlias)}</div>
               <div class="dash-pago-date">${o.docenas} docenas @ ${fmt(o.precioDocena)}/doc</div>
             </div>
-            <div style="display:flex;align-items:center;gap:15px">
-              <div style="font-family:'Space Mono';font-weight:800;font-size:14px">${fmt(o.subtotal)}</div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="font-family:'Space Mono';font-weight:800;font-size:13px">${fmt(o.subtotal)}</div>
               ${!isClosed ? `
-                <button class="btn-icon btn-sm" onclick="openEditPedido('${o.id}')" title="Editar">✏️</button>
-                <button class="btn-icon btn-sm" onclick="deletePedido('${o.id}')" title="Eliminar" style="color:var(--red)">🗑️</button>
+                <button class="btn-icon btn-sm" onclick="openEditPedido('${o.id}')">✏️</button>
+                <button class="btn-icon btn-sm" onclick="deletePedido('${o.id}')" style="color:var(--red)">🗑️</button>
               ` : ''}
             </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    // BUG #15 CORREGIDO: viewSelectedSemanaPedidos estaba referenciada en HTML pero no definida
-    function viewSelectedSemanaPedidos() {
-      // Solo redirige el foco al listado, ya visible
-    }
-
-    function navigateWeek(dir) {
-      const nextIdx = selectedSemanaIndex + dir;
-      if (nextIdx >= 0 && nextIdx < state.semanas.length) {
-        selectedSemanaIndex = nextIdx;
-        renderWeekView();
-      } else {
-        showToast('No hay más semanas registradas', 'error');
+          </div>`).join('');
       }
+
+      // Detalle de cierres si está cerrada
+      const cierresWrap = document.getElementById('detSemCierreWrap');
+      const cierresBody = document.getElementById('detSemCierreTable');
+      const cierresSem  = state.cierres ? state.cierres.filter(c => c.semana === semanaKey) : [];
+      if (isClosed && cierresSem.length > 0) {
+        cierresWrap.style.display = 'block';
+        cierresBody.innerHTML = cierresSem.map((c,i) => `
+          <tr style="${i%2===1?'background:var(--surface2)':''}">
+            <td style="font-weight:600">${esc(c.franquiciaAlias)}</td>
+            <td>${c.docenas}</td>
+            <td style="font-family:'Space Mono'">${fmt(c.totalFacturado)}</td>
+            <td>${c.regalia}%</td>
+            <td style="font-family:'Space Mono';color:var(--yellow);font-weight:700">${fmt(c.montoCobrar)}</td>
+            <td><span class="prov-badge ${c.estado==='cobrado'?'badge-dia':'badge-deuda'}" style="font-size:9px">${c.estado}</span></td>
+          </tr>`).join('');
+      } else {
+        cierresWrap.style.display = 'none';
+      }
+
+      // Botones
+      document.getElementById('detBtnCargarPedido').style.display = isClosed ? 'none' : '';
+      document.getElementById('detBtnCierre').style.display = isClosed ? 'none' : '';
+      document.getElementById('detBtnCierre').textContent = '📊 Calcular Cierre';
+
+      document.getElementById('modalDetalleSemana').classList.add('open');
     }
+
+    function detModalCargarPedido() {
+      closeModal('modalDetalleSemana');
+      openPedidoModal();
+    }
+
+    function detModalCalcularCierre() {
+      closeModal('modalDetalleSemana');
+      calcularCierreSemana();
+    }
+
+    function detModalExportarExcel() {
+      exportClosingExcel();
+    }
+
+    function navigateWeek(dir) { /* kept for compatibility */ }
 
     function openCreateSemanaModal() {
       document.getElementById('fSemanaFechaInput').value = todayISO();
@@ -2349,6 +2520,10 @@
 
       saveDataLocal();
       closeModal('modalCrearSemana');
+      // Navegar al mes de la semana creada
+      const createdDate = new Date(startStr + 'T12:00:00');
+      calYear = createdDate.getFullYear();
+      calMonth = createdDate.getMonth();
       renderWeekView();
       showToast('Nueva semana de cierre creada ✓');
     }
@@ -2502,7 +2677,9 @@
       queueAction('close_semana', { semana: week.semana, fechaCierre, closures: closingTempList });
       saveDataLocal();
       showToast('Cierre confirmado y deudas registradas ✓', 'success');
-      renderWeekView();
+      backToWeekView();
+      renderCalendar();
+      openDetalleSemana(week.semana);
     }
 
     // ===================== DEUDAS / MOVIMIENTOS =====================
