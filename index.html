@@ -1485,21 +1485,30 @@
   <!-- BUG #4 CORREGIDO: El bloque ESM ahora espera a que Clerk ya esté en el DOM (sin async)
        y el initClerk se llama directamente después de que los módulos ESM están listos -->
   <script type="module">
-    import { neon } from 'https://esm.sh/@neondatabase/serverless';
-    import { S3Client, PutObjectCommand } from 'https://esm.sh/@aws-sdk/client-s3';
-
-    window.neon = neon;
-
-    // Exponemos factory functions en vez de las clases directamente.
-    // Pasar una clase ES module por window rompe su contexto interno
-    // y el constructor falla con "S3Client is not a function".
-    window.createS3Client = (config) => new S3Client(config);
-    window.createPutObjectCommand = (input) => new PutObjectCommand(input);
-    
-    // FIX race condition: marcar flag antes de disparar el evento
-    // para que el listener del script clásico lo detecte si llegó tarde
-    window._modulesReady = true;
-    window.dispatchEvent(new CustomEvent('modules-ready'));
+    // Si cualquier import falla, igual disparamos modules-ready para no bloquear la app.
+    // Clerk y el resto de la app no dependen de estos módulos para inicializarse.
+    async function loadESMDeps() {
+      try {
+        const { neon } = await import('https://esm.sh/@neondatabase/serverless');
+        window.neon = neon;
+      } catch(e) {
+        console.warn('[ESM] neon no disponible:', e.message);
+        window.neon = null;
+      }
+      try {
+        const { S3Client, PutObjectCommand } = await import('https://esm.sh/@aws-sdk/client-s3');
+        window.createS3Client = (config) => new S3Client(config);
+        window.createPutObjectCommand = (input) => new PutObjectCommand(input);
+      } catch(e) {
+        console.warn('[ESM] S3Client no disponible:', e.message);
+        window.createS3Client = null;
+        window.createPutObjectCommand = null;
+      }
+      // SIEMPRE disparar modules-ready, con o sin dependencias
+      window._modulesReady = true;
+      window.dispatchEvent(new CustomEvent('modules-ready'));
+    }
+    loadESMDeps();
   </script>
 
   <script>
@@ -1535,7 +1544,7 @@
     // esté registrado (race condition). Usamos flag global para no perderlo.
     function startClerkPolling() {
       let checkCount = 0;
-      const MAX_CHECKS = 100;
+      const MAX_CHECKS = 30; // 3 segundos — si Clerk no carga, ir a modo offline
       const checkClerk = setInterval(async () => {
         checkCount++;
         if (typeof Clerk !== 'undefined') {
@@ -1544,16 +1553,21 @@
         } else if (checkCount >= MAX_CHECKS) {
           clearInterval(checkClerk);
           console.error("Clerk script failed to load after 10 seconds");
-          document.getElementById('loginSubText').textContent = 'Error: No se pudo cargar el módulo de autenticación. Recargá la página.';
+          document.getElementById('loginSubText').textContent = 'Clerk no disponible — iniciando modo local...';
           // BUG #8 CORREGIDO: fallback a modo local si Clerk no carga
           showAppInOfflineMode();
         }
       }, 100);
     }
 
-    // Registrar listener y manejar race condition: si modules-ready ya se disparó, arrancar igual
-    window.addEventListener('modules-ready', startClerkPolling);
-    if (window._modulesReady) { startClerkPolling(); }
+    // Arrancar Clerk inmediatamente — NO esperar al bloque ESM (neon/S3 son opcionales).
+    // Si el DOM ya está listo (DOMContentLoaded ya pasó), arrancar ahora.
+    // Si no, esperar al evento.
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', startClerkPolling);
+    } else {
+      startClerkPolling();
+    }
 
     // BUG #8 CORREGIDO: Función de modo offline cuando Clerk no está disponible
     function showAppInOfflineMode() {
