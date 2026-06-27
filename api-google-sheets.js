@@ -113,6 +113,7 @@ function doGet(e) {
 
   try {
     const doc = SpreadsheetApp.getActiveSpreadsheet();
+    const sep = getSep(); // BUG CORREGIDO: sep estaba sin definir en doPost (solo existía en doGet)
 
     // Franquicias — datos desde col B (1+C) hasta col M (12+C), 12 columnas de datos
     const shF = doc.getSheetByName("Franquicias");
