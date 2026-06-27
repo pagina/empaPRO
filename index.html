@@ -882,6 +882,11 @@
             <input type="url" id="cfgSheetUrl" placeholder="https://script.google.com/macros/s/.../exec">
           </div>
           <div class="config-group">
+            <label>URL de la Planilla Google Sheets</label>
+            <input type="url" id="cfgSheetSpreadsheetUrl" placeholder="https://docs.google.com/spreadsheets/d/...">
+            <div class="form-hint">Pegá la URL completa de tu planilla para poder abrirla directo desde la app</div>
+          </div>
+          <div class="config-group">
             <label>Token Apps Script</label>
             <input type="password" id="cfgSheetToken" placeholder="Token de verificación">
           </div>
@@ -1118,7 +1123,11 @@
       <div style="display:flex;gap:10px;flex-wrap:wrap" id="detSemActions">
         <button class="btn btn-sm" id="detBtnCargarPedido" onclick="detModalCargarPedido()" style="flex:1;justify-content:center">➕ Cargar Pedido</button>
         <button class="btn btn-sm" id="detBtnCierre" onclick="detModalCalcularCierre()" style="flex:1;justify-content:center">📊 Calcular Cierre</button>
-        <button class="btn btn-secondary btn-sm" onclick="detModalExportarExcel()" style="flex:1;justify-content:center">📥 Exportar Excel</button>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn btn-secondary btn-sm" onclick="detModalAbrirPedidosSheet()" style="flex:1;justify-content:center">📋 Ver Pedidos en Sheets</button>
+        <button class="btn btn-secondary btn-sm" onclick="detModalAbrirCierresSheet()" style="flex:1;justify-content:center">📊 Ver Cierres en Sheets</button>
+        <button class="btn btn-secondary btn-sm" onclick="detModalExportarExcel()" style="flex:1;justify-content:center">📥 Exportar .xls</button>
       </div>
     </div>
   </div>
@@ -1816,7 +1825,7 @@
 
     // ===================== CONFIGURACIÓN =====================
     function saveAppConfig() {
-      const fields = ['cfgSheetUrl','cfgSheetToken','cfgNeonConn','cfgR2AccId','cfgR2Key','cfgR2Secret','cfgR2Bucket','cfgR2Domain'];
+      const fields = ['cfgSheetUrl','cfgSheetToken','cfgSheetSpreadsheetUrl','cfgNeonConn','cfgR2AccId','cfgR2Key','cfgR2Secret','cfgR2Bucket','cfgR2Domain'];
       const keys = ['empapro_cfg_sheet_url','empapro_cfg_sheet_token','empapro_cfg_neon_conn','empapro_cfg_r2_acc_id','empapro_cfg_r2_key','empapro_cfg_r2_secret','empapro_cfg_r2_bucket','empapro_cfg_r2_domain'];
       fields.forEach((id, i) => {
         localStorage.setItem(keys[i], document.getElementById(id).value.trim());
@@ -2478,6 +2487,40 @@
       exportClosingExcel();
     }
 
+    function getSheetBaseUrl() {
+      // La URL del Apps Script la tenemos, pero necesitamos la URL de la planilla
+      // que el usuario configuró. La guardamos aparte o extraemos del script URL.
+      // Usamos la URL hardcodeada del sheet conocido del cliente.
+      const stored = localStorage.getItem('empapro_cfg_sheet_spreadsheet_url') || '';
+      if (stored) return stored;
+      // Fallback: intentar derivar desde script url (no siempre funciona)
+      return '';
+    }
+
+    function abrirSheetEnHoja(nombreHoja) {
+      const url = localStorage.getItem('empapro_cfg_sheet_spreadsheet_url') || '';
+      if (!url) {
+        showToast('Pegá la URL de tu planilla en Ajustes → URL de la Planilla', 'error');
+        return;
+      }
+      // Armar link directo a la planilla — el navegador abrirá la hoja por nombre si se agrega #gid
+      // Como no tenemos el gid, abrimos la planilla y el usuario la ve completa
+      const match = url.match(/\/d\/([\w-]+)/);
+      if (match) {
+        window.open(`https://docs.google.com/spreadsheets/d/${match[1]}/edit`, '_blank');
+      } else {
+        window.open(url, '_blank');
+      }
+    }
+
+    function detModalAbrirPedidosSheet() {
+      abrirSheetEnHoja('Pedidos');
+    }
+
+    function detModalAbrirCierresSheet() {
+      abrirSheetEnHoja('Cierres');
+    }
+
     function navigateWeek(dir) { /* kept for compatibility */ }
 
     function openCreateSemanaModal() {
@@ -3011,6 +3054,7 @@
       const cfgMap = {
         'cfgSheetUrl': 'empapro_cfg_sheet_url',
         'cfgSheetToken': 'empapro_cfg_sheet_token',
+        'cfgSheetSpreadsheetUrl': 'empapro_cfg_sheet_spreadsheet_url',
         'cfgNeonConn': 'empapro_cfg_neon_conn',
         'cfgR2AccId': 'empapro_cfg_r2_acc_id',
         'cfgR2Key': 'empapro_cfg_r2_key',
