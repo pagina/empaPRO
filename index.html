@@ -3061,6 +3061,20 @@
 
       showToast('Exportando a Google Sheets...');
       let ok = 0, fail = 0;
+      const errores = [];
+
+      // Paso 1: asegurar que la semana exista en Sheets antes de insertar pedidos
+      // (add_semana usa ON CONFLICT DO NOTHING en Apps Script, es seguro reintentar)
+      try {
+        await executeSheetAction(sheetUrl, sheetToken, 'add_semana', {
+          semana: week.semana, fechaInicio: week.fechaInicio, fechaFin: week.fechaFin
+        });
+      } catch(e) {
+        // No es fatal — puede que la semana ya exista en Sheets
+        console.warn('[exportCierreToGoogleSheets] add_semana warning:', e.message);
+      }
+
+      // Paso 2: exportar cada pedido
       for (const o of orders) {
         try {
           await executeSheetAction(sheetUrl, sheetToken, 'add_pedido', {
@@ -3070,10 +3084,15 @@
             subtotal: o.subtotal, cerrado: o.cerrado || false
           });
           ok++;
-        } catch(e) { fail++; }
+        } catch(e) {
+          fail++;
+          errores.push(`${o.franquiciaAlias}: ${e.message}`);
+          console.error('[exportCierreToGoogleSheets] error en pedido', o.id, e.message);
+        }
       }
+
       if (fail === 0) {
-        showToast('Pedidos exportados a Google Sheets ✓', 'success');
+        showToast(`${ok} pedido${ok !== 1 ? 's' : ''} exportado${ok !== 1 ? 's' : ''} a Google Sheets ✓`, 'success');
         const spreadsheetUrl = localStorage.getItem('empapro_cfg_sheet_spreadsheet_url') || '';
         if (spreadsheetUrl) {
           const match = spreadsheetUrl.match(/\/d\/([\w-]+)/);
@@ -3081,8 +3100,11 @@
             if (match) window.open('https://docs.google.com/spreadsheets/d/' + match[1] + '/edit', '_blank');
           }, 800);
         }
+      } else if (ok > 0) {
+        showToast(`${ok} exportado${ok !== 1 ? 's' : ''}, ${fail} con error. Ver consola para detalles.`, 'error');
       } else {
-        showToast(`Exportado con ${fail} errores. Verificá la conexión.`, 'error');
+        // Todos fallaron: mostrar el primer error real para poder diagnosticar
+        showToast(`Error: ${errores[0] || 'Verificá URL y Token en Ajustes'}`, 'error');
       }
     }
 
