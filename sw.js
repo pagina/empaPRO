@@ -3,7 +3,6 @@ const ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './app_icon.png'
 ];
 
 // Instalar el Service Worker y almacenar archivos en caché
