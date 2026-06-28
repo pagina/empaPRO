@@ -2136,6 +2136,13 @@
           await dbSql.query(`INSERT INTO semanas (semana, fecha_inicio, fecha_fin, total_facturado, estado) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (semana) DO NOTHING`,
             [data.semana, data.fechaInicio, data.fechaFin, 0, 'abierta']);
           break;
+        case 'delete_semana':
+          // Borrar en cascada: movimientos de cierre, cierres, pedidos, semana
+          await dbSql.query(`DELETE FROM movimientos WHERE franquicia_alias IN (SELECT DISTINCT franquicia_alias FROM cierres WHERE semana = $1) AND tipo = 'cierre' AND observaciones LIKE '%' || $1 || '%'`, [data.semana]);
+          await dbSql.query(`DELETE FROM cierres WHERE semana = $1`, [data.semana]);
+          await dbSql.query(`DELETE FROM pedidos WHERE semana = $1`, [data.semana]);
+          await dbSql.query(`DELETE FROM semanas WHERE semana = $1`, [data.semana]);
+          break;
       }
     }
 
@@ -3573,11 +3580,21 @@
       const periodo = `${formatDateShort(w.fechaInicio)} — ${formatDateShort(w.fechaFin)}`;
       if (!confirm(`¿Eliminar la semana ${periodo} y todos sus pedidos?\nEsta acción no se puede deshacer.`)) return;
 
+      // Recolectar IDs de pedidos a borrar (para sincronizar con Neon uno por uno)
+      const pedidoIdsABorrar = (state.pedidosDiarios || [])
+        .filter(p => p.semana === semanaKey)
+        .map(p => p.id)
+        .filter(Boolean);
+
       // Eliminar pedidos diarios de esa semana
       if (state.pedidosDiarios) {
         state.pedidosDiarios = state.pedidosDiarios.filter(p => p.semana !== semanaKey);
       }
       // Eliminar de state.pedidos también (compatibilidad)
+      const pedidoIdsLegacy = (state.pedidos || [])
+        .filter(p => p.semana === semanaKey)
+        .map(p => p.id)
+        .filter(Boolean);
       state.pedidos = (state.pedidos || []).filter(p => p.semana !== semanaKey);
       // Eliminar cierres de esa semana
       state.cierres = (state.cierres || []).filter(c => c.semana !== semanaKey);
@@ -3585,6 +3602,15 @@
       state.semanas = state.semanas.filter(s => s.semana !== semanaKey);
 
       saveDataLocal();
+
+      // ── Sincronizar con Neon DB ──
+      // Borrar pedidos diarios uno por uno
+      [...pedidoIdsABorrar, ...pedidoIdsLegacy].forEach(id => {
+        queueAction('delete_pedido', { id });
+      });
+      // Borrar semana, cierres y movimientos de cierre en Neon
+      queueAction('delete_semana', { semana: semanaKey });
+
       renderSemanasList();
       showToast(`Semana ${periodo} eliminada`);
     }
