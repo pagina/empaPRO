@@ -1168,7 +1168,7 @@
             <button class="btn" onclick="saveAppConfig()" style="flex:1;justify-content:center">💾 Guardar Config</button>
             <button class="btn btn-secondary" onclick="forceSync()" style="justify-content:center">🔄 Sincronizar Google Sheets</button>
             <button class="btn btn-secondary" onclick="limpiarSheetManual()" style="justify-content:center">🧹 Limpiar Sheets (borrar huérfanos)</button>
-            <button class="btn btn-secondary" onclick="resetMockData()" style="justify-content:center;color:var(--red)">Reiniciar Datos Mock</button>
+            <button class="btn btn-secondary" onclick="resetMockData()" style="justify-content:center;color:var(--red)">🗑️ Borrar todos los datos</button>
           </div>
 
           <div class="sync-status-box">
@@ -1769,44 +1769,7 @@
         await dbSql.query(`CREATE TABLE IF NOT EXISTS movimientos (id VARCHAR(50) PRIMARY KEY, fecha DATE, franquicia_alias VARCHAR(255) REFERENCES franquicias(alias) ON DELETE CASCADE, tipo VARCHAR(50), monto NUMERIC DEFAULT 0, pendiente NUMERIC DEFAULT 0, comprobante TEXT, observaciones TEXT)`);
         
         const counts = await dbSql`SELECT COUNT(*) FROM franquicias`;
-        if (Number(counts[0].count) === 0) {
-          const defaultFranchises = [
-            { alias: 'Recta Martinoli', nombre: 'Sucursal Recta Martinoli', regalia: 10 },
-            { alias: 'Urca', nombre: 'Sucursal Urca', regalia: 10 },
-            { alias: 'Juniors', nombre: 'Sucursal Juniors', regalia: 12 },
-            { alias: 'Villa Allende', nombre: 'Sucursal Villa Allende', regalia: 8 },
-            { alias: 'Valle', nombre: 'Sucursal Valle', regalia: 10 },
-            { alias: 'Matías', nombre: 'Sucursal Matías', regalia: 10 },
-            { alias: 'Leo', nombre: 'Sucursal Leo', regalia: 10 }
-          ];
-          for (const f of defaultFranchises) {
-            await dbSql.query(`INSERT INTO franquicias (alias, nombre, regalia, deuda_total, pagado, pendiente, pct_pagado, estado, fecha_alta) VALUES ($1, $2, $3, 0, 0, 0, 100, 'dia', $4)`, [f.alias, f.nombre, f.regalia, todayISO()]);
-          }
-          await dbSql.query(`INSERT INTO semanas (semana, fecha_inicio, fecha_fin, total_facturado, estado) VALUES ('2026-06-15', '2026-06-15', '2026-06-21', 121600, 'cerrada')`);
-          await dbSql.query(`INSERT INTO semanas (semana, fecha_inicio, fecha_fin, total_facturado, estado) VALUES ('2026-06-22', '2026-06-22', '2026-06-28', 136600, 'abierta')`);
-          await dbSql.query(`INSERT INTO pedidos (id, semana, franquicia_alias, docenas, precio_docena, subtotal, cerrado) VALUES ('p1', '2026-06-15', 'Valle', 20, 3800, 76000, true)`);
-          await dbSql.query(`INSERT INTO pedidos (id, semana, franquicia_alias, docenas, precio_docena, subtotal, cerrado) VALUES ('p2', '2026-06-15', 'Matías', 12, 3800, 45600, true)`);
-          await dbSql.query(`INSERT INTO pedidos (id, semana, franquicia_alias, docenas, precio_docena, subtotal, cerrado) VALUES ('p3', '2026-06-22', 'Recta Martinoli', 10, 4000, 40000, false)`);
-          await dbSql.query(`INSERT INTO pedidos (id, semana, franquicia_alias, docenas, precio_docena, subtotal, cerrado) VALUES ('p4', '2026-06-22', 'Juniors', 15, 4000, 60000, false)`);
-          await dbSql.query(`INSERT INTO pedidos (id, semana, franquicia_alias, docenas, precio_docena, subtotal, cerrado) VALUES ('p5', '2026-06-22', 'Urca', 9, 4200, 37800, false)`);
-          await dbSql.query(`INSERT INTO cierres (id, semana, fecha_cierre, franquicia_alias, docenas, total_facturado, regalia, monto_cobrar, estado) VALUES ('c1', '2026-06-15', '2026-06-21', 'Valle', 20, 76000, 10, 7600, 'cobrado')`);
-          await dbSql.query(`INSERT INTO cierres (id, semana, fecha_cierre, franquicia_alias, docenas, total_facturado, regalia, monto_cobrar, estado) VALUES ('c2', '2026-06-15', '2026-06-21', 'Matías', 12, 45600, 10, 4560, 'pendiente')`);
-          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m1', '2026-06-15', 'Urca', 'cierre', 50000, 50000, 'Deuda registrada de saldos históricos')`);
-          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m2', '2026-06-16', 'Juniors', 'cierre', 80000, 80000, 'Deuda registrada de saldos históricos')`);
-          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m3', '2026-06-17', 'Valle', 'cierre', 120000, 120000, 'Saldo histórico inicial')`);
-          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m4', '2026-06-18', 'Matías', 'cierre', 45000, 45000, 'Deuda registrada de saldos históricos')`);
-          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m5', '2026-06-19', 'Leo', 'cierre', 30000, 30000, 'Deuda registrada de saldos históricos')`);
-          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m6', '2026-06-20', 'Valle', 'pago', 120000, 0, 'Transferencia Banco Galicia')`);
-          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m7', '2026-06-21', 'Matías', 'pago', 15000, 30000, 'Pago a cuenta de pedidos anteriores')`);
-          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m8', '2026-06-21', 'Valle', 'cierre', 7600, 7600, 'Cierre semanal (20 docenas a $3800, Regalía 10%)')`);
-          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m9', '2026-06-21', 'Matías', 'cierre', 4560, 34560, 'Cierre semanal (12 docenas a $3800, Regalía 10%)')`);
-          await dbSql.query(`INSERT INTO movimientos (id, fecha, franquicia_alias, tipo, monto, pendiente, observaciones) VALUES ('m10', '2026-06-22', 'Valle', 'pago', 7600, 0, 'Pago total del cierre semanal - MP')`);
-          await dbSql.query(`UPDATE franquicias SET deuda_total = 50000, pagado = 20000, pendiente = 30000, pct_pagado = 40, estado = 'parcial' WHERE alias = 'Urca'`);
-          await dbSql.query(`UPDATE franquicias SET deuda_total = 80000, pagado = 0, pendiente = 80000, pct_pagado = 0, estado = 'deuda' WHERE alias = 'Juniors'`);
-          await dbSql.query(`UPDATE franquicias SET deuda_total = 127600, pagado = 127600, pendiente = 0, pct_pagado = 100, estado = 'dia' WHERE alias = 'Valle'`);
-          await dbSql.query(`UPDATE franquicias SET deuda_total = 49560, pagado = 15000, pendiente = 34560, pct_pagado = 30, estado = 'parcial' WHERE alias = 'Matías'`);
-          await dbSql.query(`UPDATE franquicias SET deuda_total = 30000, pagado = 0, pendiente = 30000, pct_pagado = 0, estado = 'deuda' WHERE alias = 'Leo'`);
-        }
+        // Base lista — no insertar datos de ejemplo
       } catch (err) {
         console.error("Neon DB Initialization failed:", err);
         throw err;
@@ -1912,24 +1875,38 @@
       localStorage.setItem('empapro_sync_queue', JSON.stringify(syncQueue));
     }
 
-    function resetMockData() {
-      if (confirm('¿Seguro que deseas restaurar todos los datos de simulación al estado inicial?')) {
-        localStorage.removeItem('empapro_franquicias');
-        localStorage.removeItem('empapro_semanas');
-        localStorage.removeItem('empapro_pedidos');
-        localStorage.removeItem('empapro_cierres');
-        localStorage.removeItem('empapro_movimientos');
-        
-        if (dbSql) {
-          dbSql("DROP TABLE IF EXISTS movimientos, cierres, pedidos, semanas, franquicias, config CASCADE")
-            .then(() => connectToNeon())
-            .catch(err => { console.error(err); loadDataLocal(); renderAll(); });
-        } else {
-          loadDataLocal();
-          renderAll();
-          showToast('Datos locales reiniciados', 'success');
+    async function resetMockData() {
+      if (!confirm('⚠️ Esto borrará TODOS los datos de Neon (franquicias, semanas, pedidos, cierres, movimientos) y el almacenamiento local.\n\n¿Estás seguro?')) return;
+
+      // Limpiar localStorage
+      localStorage.removeItem('empapro_franquicias');
+      localStorage.removeItem('empapro_semanas');
+      localStorage.removeItem('empapro_pedidos');
+      localStorage.removeItem('empapro_cierres');
+      localStorage.removeItem('empapro_movimientos');
+      localStorage.removeItem('empapro_pedidos_diarios');
+      localStorage.removeItem('empapro_sync_queue');
+      syncQueue = [];
+
+      if (dbSql) {
+        try {
+          // Borrar datos pero mantener las tablas (para no volver a insertar seeds)
+          await dbSql.query('DELETE FROM movimientos');
+          await dbSql.query('DELETE FROM cierres');
+          await dbSql.query('DELETE FROM pedidos');
+          await dbSql.query('DELETE FROM semanas');
+          await dbSql.query('DELETE FROM franquicias');
+          showToast('✅ Todos los datos eliminados', 'success');
+        } catch(err) {
+          console.error(err);
+          showToast('Error al limpiar Neon: ' + err.message, 'error');
         }
+        await loadDataFromNeon();
+      } else {
+        loadDataLocal();
+        showToast('Datos locales reiniciados', 'success');
       }
+      renderAll();
     }
 
     // ===================== CLOUDFLARE R2 =====================
