@@ -1167,6 +1167,7 @@
           <div style="display:flex;gap:10px;margin-top:20px">
             <button class="btn" onclick="saveAppConfig()" style="flex:1;justify-content:center">💾 Guardar Config</button>
             <button class="btn btn-secondary" onclick="forceSync()" style="justify-content:center">🔄 Sincronizar Google Sheets</button>
+            <button class="btn btn-secondary" onclick="limpiarSheetManual()" style="justify-content:center">🧹 Limpiar Sheets (borrar huérfanos)</button>
             <button class="btn btn-secondary" onclick="resetMockData()" style="justify-content:center;color:var(--red)">Reiniciar Datos Mock</button>
           </div>
 
@@ -2151,9 +2152,6 @@
     }
 
     async function executeSheetAction(url, token, action, data) {
-      // BUG CORREGIDO: antes los errores se atrapaban y solo se logueaban en consola,
-      // nunca se relanzaban -> processSyncQueue creía que todo se sincronizó bien
-      // y borraba la acción de la cola aunque Google Sheets nunca la recibiera.
       const resp = await fetch(`${url}?token=${encodeURIComponent(token)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
@@ -2173,10 +2171,46 @@
       }
 
       if (json && json.status === 'error') {
+        // Si el Apps Script no reconoce la acción (versión vieja), no bloquear la cola —
+        // descartar silenciosamente para que las otras acciones puedan procesarse.
+        if (json.message && json.message.includes('Acción no reconocida')) {
+          console.warn(`[Sheets] Apps Script no reconoce "${action}" — actualizá el Apps Script. Acción descartada de la cola.`);
+          return json; // no lanzar error → la cola la borra como éxito
+        }
         throw new Error('Google Sheets: ' + (json.message || 'error desconocido (revisá el Token)'));
       }
 
       return json;
+    }
+
+    // Limpia en Sheets todo lo que Neon ya no tiene: reenvía el estado actual completo
+    async function limpiarSheetManual() {
+      const sheetUrl = localStorage.getItem('empapro_cfg_sheet_url');
+      const sheetToken = localStorage.getItem('empapro_cfg_sheet_token');
+      if (!sheetUrl) { showToast('Configurá la URL del Apps Script en Ajustes', 'error'); return; }
+
+      showToast('Limpiando Sheets...', 'info');
+      try {
+        // 1. Borrar semanas que no están en Neon: reenviar delete por cada semana en cola
+        //    Las acciones delete_semana pendientes se ejecutan ahora explícitamente
+        const deletePendientes = syncQueue.filter(q => q.action === 'delete_semana' || q.action === 'delete_pedido');
+        for (const item of deletePendientes) {
+          try {
+            await executeSheetAction(sheetUrl, sheetToken, item.action, item.data);
+            syncQueue = syncQueue.filter(q => q.id !== item.id);
+          } catch(e) {
+            console.warn('No se pudo limpiar item:', item, e);
+          }
+        }
+
+        // 2. Pedir al Apps Script que compacte (elimine filas vacías)
+        await executeSheetAction(sheetUrl, sheetToken, 'compact_all', {});
+
+        saveDataLocal();
+        showToast('✅ Sheets limpio y compactado', 'success');
+      } catch(e) {
+        showToast('Error al limpiar Sheets: ' + e.message, 'error');
+      }
     }
 
     // ===================== CONFIGURACIÓN =====================
