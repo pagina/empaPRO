@@ -1729,6 +1729,14 @@
         dbSql = window.neon(connString, { disableWarningInBrowsers: true });
         
         await initNeonDatabase();
+
+        // ── CRÍTICO: procesar acciones pendientes (deletes, etc.) ANTES de cargar
+        // datos de Neon. Si lo hacemos después, Neon devuelve los datos que
+        // acabamos de borrar y los pisa en el estado local.
+        if (navigator.onLine && syncQueue.length > 0) {
+          await processSyncQueue();
+        }
+
         await loadDataFromNeon();
         
         dot.className = 'sync-dot connected';
@@ -1737,10 +1745,6 @@
         document.getElementById('appModeVal').style.color = 'var(--green)';
         
         initR2Client();
-
-        if (navigator.onLine) {
-          await processSyncQueue();
-        }
       } catch (e) {
         console.error("Neon Connection failed, using local offline fallback:", e);
         dot.className = 'sync-dot error';
@@ -2137,8 +2141,8 @@
             [data.semana, data.fechaInicio, data.fechaFin, 0, 'abierta']);
           break;
         case 'delete_semana':
-          // Borrar en cascada: movimientos de cierre, cierres, pedidos, semana
-          await dbSql.query(`DELETE FROM movimientos WHERE franquicia_alias IN (SELECT DISTINCT franquicia_alias FROM cierres WHERE semana = $1) AND tipo = 'cierre' AND observaciones LIKE '%' || $1 || '%'`, [data.semana]);
+          // pedidos y cierres tienen ON DELETE CASCADE desde semanas en Neon,
+          // pero por seguridad los borramos explícitamente antes
           await dbSql.query(`DELETE FROM cierres WHERE semana = $1`, [data.semana]);
           await dbSql.query(`DELETE FROM pedidos WHERE semana = $1`, [data.semana]);
           await dbSql.query(`DELETE FROM semanas WHERE semana = $1`, [data.semana]);
