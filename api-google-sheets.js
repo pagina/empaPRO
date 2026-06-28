@@ -272,6 +272,7 @@ function doPost(e) {
       const sh = doc.getSheetByName("Franquicias");
       const ri = findFranRow(sh, data.alias);
       if (ri !== -1) sh.deleteRow(ri);
+      compactSheet(sh, ROW_FRAN);
       refreshDashboard(doc, sep);
       return jsonResponse({ status: "success", message: "Franquicia eliminada." });
     }
@@ -309,6 +310,7 @@ function doPost(e) {
       const sh = doc.getSheetByName("Pedidos");
       const ri = findRow(sh, 9+C, data.id, ROW_PED);
       if (ri !== -1) sh.deleteRow(ri);
+      compactSheet(sh, ROW_PED);
       return jsonResponse({ status: "success", message: "Pedido eliminado." });
     }
 
@@ -440,10 +442,73 @@ function doPost(e) {
       return jsonResponse({ status: "success", message: "Movimiento anulado." });
     }
 
+    // ── delete_semana ────────────────────────────────────────────────────────
+    // Elimina la semana, todos sus pedidos y sus cierres de Google Sheets
+    if (action === "delete_semana") {
+      const semana = safeStr(data.semana);
+      const shPed = doc.getSheetByName("Pedidos");
+      const shCie = doc.getSheetByName("Cierres");
+
+      // Borrar todas las filas de pedidos de esta semana (de abajo hacia arriba para no desplazar índices)
+      let lastP = shPed.getLastRow();
+      if (lastP >= ROW_PED) {
+        const semVals = shPed.getRange(ROW_PED, 1+C, lastP - ROW_PED + 1, 1).getValues();
+        for (let i = semVals.length - 1; i >= 0; i--) {
+          if (safeStr(semVals[i][0]) === semana) {
+            shPed.deleteRow(i + ROW_PED);
+          }
+        }
+      }
+      compactSheet(shPed, ROW_PED);
+
+      // Borrar todas las filas de cierres de esta semana
+      let lastC = shCie.getLastRow();
+      if (lastC >= ROW_CIE) {
+        const semValsCie = shCie.getRange(ROW_CIE, 1+C, lastC - ROW_CIE + 1, 1).getValues();
+        for (let i = semValsCie.length - 1; i >= 0; i--) {
+          if (safeStr(semValsCie[i][0]) === semana) {
+            shCie.deleteRow(i + ROW_CIE);
+          }
+        }
+      }
+      compactSheet(shCie, ROW_CIE);
+
+      refreshDashboard(doc, sep);
+      return jsonResponse({ status: "success", message: "Semana eliminada." });
+    }
+
+    // ── compact_sheet ─────────────────────────────────────────────────────────
+    // Reorganiza una hoja eliminando filas vacías entre datos para que todo quede desde ROW_X
+    if (action === "compact_all") {
+      compactSheet(doc.getSheetByName("Franquicias"), ROW_FRAN);
+      compactSheet(doc.getSheetByName("Pedidos"), ROW_PED);
+      compactSheet(doc.getSheetByName("Cierres"), ROW_CIE);
+      compactSheet(doc.getSheetByName("Movimientos"), ROW_MOV);
+      return jsonResponse({ status: "success", message: "Todas las hojas compactadas." });
+    }
+
     return jsonResponse({ status: "error", message: "Acción no reconocida: " + action });
 
   } catch(err) {
     return jsonResponse({ status: "error", message: "Error POST: " + err.toString() });
+  }
+}
+
+// ─── COMPACT ─────────────────────────────────────────────────────────────────
+// Elimina filas completamente vacías a partir de startRow para mantener datos compactos desde arriba
+
+function compactSheet(sh, startRow) {
+  if (!sh) return;
+  const last = sh.getLastRow();
+  if (last < startRow) return;
+  const numRows = last - startRow + 1;
+  const vals = sh.getRange(startRow, 1, numRows, sh.getLastColumn() || 1).getValues();
+  // Recorrer de abajo hacia arriba para no desplazar índices al borrar
+  for (let i = vals.length - 1; i >= 0; i--) {
+    const rowEmpty = vals[i].every(cell => cell === '' || cell === null || cell === undefined);
+    if (rowEmpty) {
+      sh.deleteRow(i + startRow);
+    }
   }
 }
 
